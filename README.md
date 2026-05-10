@@ -165,6 +165,35 @@ monthly_token_cap = 100_000
 enabled = false
 ```
 
+## GitHub Action — warn on PRs against unhealthy pets
+
+If you want gitchi to comment on PRs in your other repos whenever the
+target repo's pet is starving or fragile, drop this into the target repo's
+`.github/workflows/pet-check.yml`:
+
+```yaml
+name: pet check
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  pet-check:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: PedroCorreiaLuis/gitchi/.github/actions/check-pet@v0.4.0
+        with:
+          hunger-threshold: 30
+          health-threshold: 50
+```
+
+Full action docs: [`.github/actions/check-pet/README.md`](.github/actions/check-pet/README.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). New species are especially welcome —
