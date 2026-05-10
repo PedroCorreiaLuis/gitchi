@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from tama.art import render
-from tama.models import Species, Stage
+from gitchi.art import render
+from gitchi.models import Species, Stage
 
 
 def test_every_combination_renders() -> None:

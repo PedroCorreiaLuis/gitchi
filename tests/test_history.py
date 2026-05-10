@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tama.history import DEFAULT_HISTORY_LEN, sparkline
+from gitchi.history import DEFAULT_HISTORY_LEN, sparkline
 
 
 def test_empty_input_returns_padded_spaces() -> None:

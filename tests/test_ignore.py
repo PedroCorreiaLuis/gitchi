@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tama.models import Repo, Species, Stage, Vitals
-from tama.store import (
+from gitchi.models import Repo, Species, Stage, Vitals
+from gitchi.store import (
     all_pets,
     connect,
     get_pet,
@@ -48,7 +48,7 @@ def test_ignored_pet_is_hidden_from_default_list(tmp_path: Path) -> None:
 
 
 def test_get_pet_still_finds_ignored(tmp_path: Path) -> None:
-    """`tama show <name>` should still resolve an ignored pet — the user asked for it directly."""
+    """`gitchi show <name>` should still resolve an ignored pet — the user asked for it directly."""
     db = tmp_path / "x.db"
     repo = _repo(tmp_path / "beta")
     with connect(db) as conn:

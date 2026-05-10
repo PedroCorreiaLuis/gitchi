@@ -1,6 +1,6 @@
 """Vitals time-series history + sparkline rendering.
 
-Every `tama refresh` writes one row per pet to `vitals_history`. `tama show`
+Every `gitchi refresh` writes one row per pet to `vitals_history`. `gitchi show`
 reads the last N rows for a pet and renders a sparkline so you can see whether
 its hunger / health / energy / mood is trending up or down.
 

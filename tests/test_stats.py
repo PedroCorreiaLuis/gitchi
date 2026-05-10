@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from tama.models import Repo, Stage, StatsConfig
-from tama.stats import compute, stage_for
+from gitchi.models import Repo, Stage, StatsConfig
+from gitchi.stats import compute, stage_for
 
 
 def _repo(**overrides) -> Repo:

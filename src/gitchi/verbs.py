@@ -139,7 +139,7 @@ def pet(repo_path: Path, *, file: Path | None = None, line: int | None = None) -
     """Open the repo in $EDITOR (or `cursor` / `code` / `vim` fallback).
 
     When `file` and `line` are supplied the launcher targets that exact location
-    using the editor's "goto" convention. This is what `tama feed` uses to drop
+    using the editor's "goto" convention. This is what `gitchi feed` uses to drop
     you straight onto the stale TODO it just found.
 
     Supported goto syntaxes:
@@ -205,11 +205,11 @@ def revive(repo_path: Path) -> None:
 
 
 def ignore(repo_path: Path, reason: str | None = None) -> None:
-    """Hide a pet from `tama list` and from the news feed.
+    """Hide a pet from `gitchi list` and from the news feed.
 
     Different from `bury`: bury is for "this repo died with dignity", ignore is
     for "this is a vendored fork I never wrote / a clone I don't maintain /
-    a directory tama shouldn't be tracking at all".
+    a directory gitchi shouldn't be tracking at all".
     """
     with connect(db_path()) as conn:
         _ignore(conn, repo_path, reason)

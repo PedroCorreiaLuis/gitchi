@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tama import config as config_mod
-from tama import refresh as refresh_mod
-from tama.models import Config
+from gitchi import config as config_mod
+from gitchi import refresh as refresh_mod
+from gitchi.models import Config
 
 
 def test_refresh_full_pipeline(tmp_path: Path, monkeypatch, make_repo) -> None:
-    db = tmp_path / "tama.db"
+    db = tmp_path / "gitchi.db"
     monkeypatch.setattr(config_mod, "db_path", lambda: db)
     monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
 
@@ -31,7 +31,7 @@ def test_refresh_full_pipeline(tmp_path: Path, monkeypatch, make_repo) -> None:
 def test_first_refresh_emits_hatched_news_for_each_new_repo(
     tmp_path: Path, monkeypatch, make_repo
 ) -> None:
-    db = tmp_path / "tama.db"
+    db = tmp_path / "gitchi.db"
     monkeypatch.setattr(config_mod, "db_path", lambda: db)
     monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
 
@@ -51,7 +51,7 @@ def test_first_refresh_emits_hatched_news_for_each_new_repo(
 def test_second_refresh_with_no_change_emits_no_news(
     tmp_path: Path, monkeypatch, make_repo
 ) -> None:
-    db = tmp_path / "tama.db"
+    db = tmp_path / "gitchi.db"
     monkeypatch.setattr(config_mod, "db_path", lambda: db)
     monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
 
@@ -67,12 +67,12 @@ def test_second_refresh_with_no_change_emits_no_news(
 
 
 def test_ignored_repo_does_not_emit_news_events(tmp_path: Path, monkeypatch, make_repo) -> None:
-    """Regression for the `tama ignore` docstring promise — ignored repos must
+    """Regression for the `gitchi ignore` docstring promise — ignored repos must
     not surface news events even when they would otherwise (e.g. hatched).
     """
-    from tama.store import connect, ignore
+    from gitchi.store import connect, ignore
 
-    db = tmp_path / "tama.db"
+    db = tmp_path / "gitchi.db"
     monkeypatch.setattr(config_mod, "db_path", lambda: db)
     monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
 
@@ -97,7 +97,7 @@ def test_ignored_repo_does_not_emit_news_events(tmp_path: Path, monkeypatch, mak
 
 def test_refresh_writes_to_vitals_history(tmp_path: Path, monkeypatch, make_repo) -> None:
     """Each refresh should append exactly one history row per repo."""
-    db = tmp_path / "tama.db"
+    db = tmp_path / "gitchi.db"
     monkeypatch.setattr(config_mod, "db_path", lambda: db)
     monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
 
@@ -111,7 +111,7 @@ def test_refresh_writes_to_vitals_history(tmp_path: Path, monkeypatch, make_repo
     refresh_mod.refresh(cfg)
     refresh_mod.refresh(cfg)
 
-    from tama.store import connect, vitals_history
+    from gitchi.store import connect, vitals_history
 
     pets = refresh_mod.list_pets()
     alpha = next(p for p in pets if p.repo.name == "alpha")

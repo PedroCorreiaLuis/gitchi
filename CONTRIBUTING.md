@@ -1,14 +1,14 @@
-# Contributing to tama
+# Contributing to gitchi
 
-Thanks for considering a contribution. tama is small, so the bar for getting
+Thanks for considering a contribution. gitchi is small, so the bar for getting
 something merged is low: it should be tested, it should pass `ruff` and
 `mypy`, and it should not break the TUI.
 
 ## Setup
 
 ```bash
-git clone https://github.com/PedroCorreiaLuis/tama
-cd tama
+git clone https://github.com/PedroCorreiaLuis/gitchi
+cd gitchi
 uv sync --extra menubar --extra dev   # creates .venv and installs locked deps
 ```
 
@@ -25,8 +25,8 @@ uv run mypy src
 
 Species are the easiest contribution path. Edit two files:
 
-1. `src/tama/species.py` — add a `(language, Species)` mapping.
-2. `src/tama/art.py` — add ASCII art for each evolution stage:
+1. `src/gitchi/species.py` — add a `(language, Species)` mapping.
+2. `src/gitchi/art.py` — add ASCII art for each evolution stage:
    `egg`, `baby`, `teen`, `adult`, `elder`, `ghost`.
 
 Open a PR with one new test in `tests/test_species.py` proving the language
@@ -57,7 +57,7 @@ Releases are automated. Pushing a tag of the form `v<X>.<Y>.<Z>` triggers
 To cut a release:
 
 ```bash
-# bump the version in pyproject.toml + src/tama/__init__.py + CHANGELOG.md
+# bump the version in pyproject.toml + src/gitchi/__init__.py + CHANGELOG.md
 # (we keep them in sync as a deliberate three-place edit so each can be
 # audited independently in PR review)
 
@@ -81,9 +81,9 @@ Trusted publishing requires a one-time configuration on pypi.org:
 
 1. Log in to pypi.org → "Your projects" → "Manage" or "Publishing".
 2. Add a **pending publisher** (works even before the project exists):
-   - Project: `tama`
+   - Project: `gitchi`
    - Owner: `PedroCorreiaLuis`
-   - Repo: `tama`
+   - Repo: `gitchi`
    - Workflow: `release.yml`
    - Environment: `pypi`
 3. First tag push runs the workflow, claims the project name, and uploads

@@ -1,4 +1,4 @@
-"""Config file IO. Lives at platformdirs user_config_dir / 'tama' / 'config.toml'."""
+"""Config file IO. Lives at platformdirs user_config_dir / 'gitchi' / 'config.toml'."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from platformdirs import user_config_dir, user_data_dir
 
 from .models import ClaudeConfig, Config, GitHubConfig, ScanConfig, StatsConfig
 
-APP_NAME = "tama"
+APP_NAME = "gitchi"
 
 
 def config_path() -> Path:
@@ -25,7 +25,7 @@ def data_dir() -> Path:
 
 
 def db_path() -> Path:
-    return data_dir() / "tama.db"
+    return data_dir() / "gitchi.db"
 
 
 def cron_log_path() -> Path:
@@ -115,7 +115,7 @@ def _to_dict(cfg: Config) -> dict[str, Any]:
 
 
 def set_value(cfg: Config, dotted_key: str, value: str) -> Config:
-    """Mutate cfg by setting a dotted-key path. Used by `tama config set`."""
+    """Mutate cfg by setting a dotted-key path. Used by `gitchi config set`."""
     parts = dotted_key.split(".")
     if len(parts) != 2:
         raise ValueError(f"expected dotted.key, got {dotted_key!r}")

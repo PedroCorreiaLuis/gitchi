@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tama import config as config_mod
-from tama.models import Config
+from gitchi import config as config_mod
+from gitchi.models import Config
 
 
 def test_round_trip(tmp_path: Path, monkeypatch) -> None:

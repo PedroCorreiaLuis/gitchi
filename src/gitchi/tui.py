@@ -33,7 +33,7 @@ class DetailPanel(Static):
 
     def show_pet(self, pet: Pet | None) -> None:
         if pet is None:
-            self.update("[dim]no pets — run `tama refresh` to scan.[/dim]")
+            self.update("[dim]no pets — run `gitchi refresh` to scan.[/dim]")
             return
         lines = [
             f"[bold]{pet.repo.name}[/bold]  {emoji_for(pet.species)} {pet.species.value} · {pet.stage.value}",
@@ -71,7 +71,7 @@ class NewsPanel(Static):
         self.update("\n".join(lines))
 
 
-class TamaApp(App[None]):
+class GitchiApp(App[None]):
     CSS = """
     Screen { layout: vertical; }
     #body { height: 1fr; }
@@ -118,7 +118,7 @@ class TamaApp(App[None]):
         yield Footer()
 
     async def on_mount(self) -> None:
-        self.title = "tama"
+        self.title = "gitchi"
         self.sub_title = "your codebase as a tamagotchi"
         self._reload()
 
@@ -228,7 +228,7 @@ class TamaApp(App[None]):
             return
         verbs_mod.ignore(pet.repo.path, None)
         self._reload()
-        self.notify(f"{pet.repo.name} ignored (run `tama unignore` to reverse)")
+        self.notify(f"{pet.repo.name} ignored (run `gitchi unignore` to reverse)")
 
     def action_unignore(self) -> None:
         pet = self._selected()
@@ -240,4 +240,4 @@ class TamaApp(App[None]):
 
 
 def run() -> None:
-    TamaApp().run()
+    GitchiApp().run()

@@ -1,8 +1,8 @@
-# tama
+# gitchi
 
 > A virtual pet for every git repo. Your codebase as a tamagotchi.
 
-`tama` scans your filesystem, finds every git repository, and spawns a virtual
+`gitchi` scans your filesystem, finds every git repository, and spawns a virtual
 pet for each one. The pet's health, mood, and species are derived from the
 repo itself — language, commit cadence, open issues, age. Pets get hungry when
 you don't commit, sick when CI breaks, and turn into ghosts when abandoned.
@@ -11,10 +11,10 @@ It's a glanceable, slightly absurd, and surprisingly honest dashboard for the
 state of every project you've ever started.
 
 ```
-╭───────────────────────── tama ─────────────────────────╮
+╭───────────────────────── gitchi ─────────────────────────╮
 │                                                        │
 │   ◉ rasteira       🐍 baby snake     hungry  ░░░░░░░  │
-│   ◉ tama           🟢 baby blob      thriving █████░  │
+│   ◉ gitchi           🟢 baby blob      thriving █████░  │
 │   ◉ coldpipe       🐍 adult snake    content  ████░░  │
 │   ◉ flight-project 👻 ghost          buried   ░░░░░░  │
 │   ◉ uw-copilot     🐉 teen dragon    happy    ██████  │
@@ -35,17 +35,17 @@ A pet that visibly suffers when you ignore it might.
 
 ```bash
 # recommended: isolated install via pipx
-pipx install tama
+pipx install gitchi
 
 # or with uv's pipx-equivalent
-uv tool install tama
+uv tool install gitchi
 
 # or classic pip
-pip install tama
+pip install gitchi
 
 # from source (for development)
-git clone https://github.com/PedroCorreiaLuis/tama
-cd tama
+git clone https://github.com/PedroCorreiaLuis/gitchi
+cd gitchi
 uv sync --extra menubar --extra dev   # `menubar` is macOS-only; drop it on Linux
 ```
 
@@ -53,30 +53,30 @@ uv sync --extra menubar --extra dev   # `menubar` is macOS-only; drop it on Linu
 
 ```bash
 # scan and view
-tama                          # opens the TUI dashboard
+gitchi                          # opens the TUI dashboard
 
 # inspect a single pet
-tama show <repo>
+gitchi show <repo>
 
 # interact
-tama feed <repo>              # nudges you to commit (suggests a stale TODO)
-tama play <repo>              # runs the test suite
-tama pet <repo>               # opens the repo in $EDITOR
-tama bury <repo>              # marks an abandoned repo at peace
-tama revive <repo>            # un-buries a ghost
+gitchi feed <repo>              # nudges you to commit (suggests a stale TODO)
+gitchi play <repo>              # runs the test suite
+gitchi pet <repo>               # opens the repo in $EDITOR
+gitchi bury <repo>              # marks an abandoned repo at peace
+gitchi revive <repo>            # un-buries a ghost
 
 # config
-tama config show
-tama config set scan.paths ~/code,~/projects
-tama config set scan.depth 4
+gitchi config show
+gitchi config set scan.paths ~/code,~/projects
+gitchi config set scan.depth 4
 
 # bring optional services online
 export GITHUB_TOKEN=ghp_...           # enriches Energy with real issue/PR data
 export ANTHROPIC_API_KEY=sk-ant-...   # enriches Mood from commit-message tone
 
 # automation (macOS)
-tama cron install             # writes a launchd plist that refreshes nightly
-tama menubar install          # registers the menu-bar app at login
+gitchi cron install             # writes a launchd plist that refreshes nightly
+gitchi menubar install          # registers the menu-bar app at login
 ```
 
 ## Stats
@@ -125,7 +125,7 @@ A `git tag` or GitHub release accelerates the next evolution.
 ## Architecture
 
 ```
-src/tama/
+src/gitchi/
 ├── cli.py        # typer entrypoint
 ├── tui.py        # textual dashboard
 ├── menubar.py    # rumps menu-bar (macOS)
@@ -133,9 +133,9 @@ src/tama/
 ├── stats.py      # compute the five vitals
 ├── species.py    # repo → species mapping
 ├── art.py        # ASCII pixel-art per species × stage
-├── store.py      # SQLite persistence (~/.local/share/tama/)
+├── store.py      # SQLite persistence (~/.local/share/gitchi/)
 ├── verbs.py      # feed / play / pet / bury / revive
-├── config.py     # ~/.config/tama/config.toml
+├── config.py     # ~/.config/gitchi/config.toml
 ├── github.py     # optional GitHub enrichment
 ├── claude.py     # optional commit-mood sentiment
 └── cron.py       # launchd plist generator
@@ -143,7 +143,7 @@ src/tama/
 
 ## Configuration
 
-Config lives at `~/.config/tama/config.toml` (`platformdirs` resolves the
+Config lives at `~/.config/gitchi/config.toml` (`platformdirs` resolves the
 right path on each OS).
 
 ```toml

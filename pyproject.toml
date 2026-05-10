@@ -1,6 +1,6 @@
 [project]
-name = "tama"
-version = "0.2.0"
+name = "gitchi"
+version = "0.3.0"
 description = "A virtual pet for every git repo. Your codebase as a tamagotchi."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -41,13 +41,13 @@ dev = [
 ]
 
 [project.scripts]
-tama = "tama.cli:app"
-tama-menubar = "tama.menubar:main"
+gitchi = "gitchi.cli:app"
+gitchi-menubar = "gitchi.menubar:main"
 
 [project.urls]
-Homepage = "https://github.com/PedroCorreiaLuis/tama"
-Repository = "https://github.com/PedroCorreiaLuis/tama"
-Issues = "https://github.com/PedroCorreiaLuis/tama/issues"
+Homepage = "https://github.com/PedroCorreiaLuis/gitchi"
+Repository = "https://github.com/PedroCorreiaLuis/gitchi"
+Issues = "https://github.com/PedroCorreiaLuis/gitchi/issues"
 
 [build-system]
 requires = ["uv_build>=0.11.8,<0.12.0"]

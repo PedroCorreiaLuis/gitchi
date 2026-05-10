@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tama.models import ScanConfig
-from tama.scanner import find_repos
+from gitchi.models import ScanConfig
+from gitchi.scanner import find_repos
 
 
 def test_finds_a_simple_repo(make_repo, tmp_path: Path) -> None:

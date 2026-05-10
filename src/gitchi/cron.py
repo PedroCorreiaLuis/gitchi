@@ -1,7 +1,7 @@
-"""Generate and install a launchd plist that refreshes tama nightly.
+"""Generate and install a launchd plist that refreshes gitchi nightly.
 
-macOS only. The plist runs `<python> -m tama refresh` at 03:30 every day,
-logging stdout/stderr to ~/.local/share/tama/cron.log.
+macOS only. The plist runs `<python> -m gitchi refresh` at 03:30 every day,
+logging stdout/stderr to ~/.local/share/gitchi/cron.log.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from textwrap import dedent
 
 from .config import cron_log_path
 
-LABEL = "com.tama.refresh"
+LABEL = "com.gitchi.refresh"
 
 
 def plist_path() -> Path:
@@ -37,7 +37,7 @@ def render_plist(python: str | None = None, hour: int = 3, minute: int = 30) -> 
             <array>
                 <string>{py}</string>
                 <string>-m</string>
-                <string>tama</string>
+                <string>gitchi</string>
                 <string>refresh</string>
             </array>
             <key>StartCalendarInterval</key>
