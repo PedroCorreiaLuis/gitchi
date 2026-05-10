@@ -14,12 +14,12 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import DataTable, Footer, Header, Static
 
-from . import refresh as refresh_mod
-from . import verbs as verbs_mod
-from .art import render
-from .models import NewsEvent, Pet, Stage
-from .rarity import emoji_for as rarity_emoji_for
-from .species import emoji_for
+from .. import refresh as refresh_mod
+from .. import verbs as verbs_mod
+from ..art import render
+from ..models import NewsEvent, Pet, Stage
+from ..rarity import emoji_for as rarity_emoji_for
+from ..species import emoji_for
 
 NEWS_PANEL_LIMIT = 6
 
