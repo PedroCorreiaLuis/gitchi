@@ -5,11 +5,12 @@ on:
     tags:
       - "v*"
 
-# Trusted-publishing requires `id-token: write` so PyPI can verify the
-# workflow's GitHub-issued OIDC token. `contents: read` covers the checkout.
+# Workflow-level permissions are minimum: `contents: read` covers the
+# `actions/checkout` step. The OIDC `id-token: write` grant needed for
+# trusted publishing is scoped to the `publish-pypi` job only — keeping
+# the build job from holding a token it never uses.
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   build:
@@ -47,6 +48,13 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
+    # Trusted publishing needs `id-token: write` so PyPI can verify the
+    # workflow's GitHub-issued OIDC token. Scoping it to this job (rather
+    # than workflow-level) keeps the build job from holding a token it
+    # has no use for.
+    permissions:
+      id-token: write
+      contents: read
     # `environment: pypi` lets you scope the trusted publisher to this
     # specific environment for an extra layer of protection. Match the value
     # to the environment name you'll configure in the PyPI publisher entry.
