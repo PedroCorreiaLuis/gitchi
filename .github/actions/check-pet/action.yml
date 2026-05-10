@@ -1,0 +1,89 @@
+name: gitchi pet check
+description: Warn on pull requests opened against a repo whose gitchi pet is unhealthy.
+author: Pedro Correia Luis
+
+inputs:
+  hunger-threshold:
+    description: |
+      Minimum hunger (0-100) before the action posts a warning comment. Below
+      this, the action treats the pet as starving and surfaces a sticky comment
+      on the PR. Default 30 matches the same "became_hungry" event threshold
+      used elsewhere in gitchi.
+    required: false
+    default: "30"
+  health-threshold:
+    description: |
+      Minimum health (0-100) before the action warns. Health reflects test
+      and CI infrastructure; below 50 means the repo is genuinely thin on
+      automated guardrails.
+    required: false
+    default: "50"
+  comment-marker:
+    description: |
+      HTML comment marker used to identify and update the bot's previous
+      comment instead of stacking new ones on every push. Don't change unless
+      you have a reason to.
+    required: false
+    default: "<!-- gitchi-pet-check -->"
+  github-token:
+    description: |
+      Token used to post / update the PR comment. Defaults to the workflow's
+      built-in GITHUB_TOKEN — your calling job needs `pull-requests: write`.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install gitchi from PyPI
+      shell: bash
+      # Pinned to the same release as the action itself. Bumping the action's
+      # version requires bumping this pin too — covered in CONTRIBUTING's
+      # "Releases" section. An unpinned install would couple every caller's
+      # CI to whatever the latest PyPI release is, which is bad on two axes:
+      # (a) a breaking gitchi release would silently break consumers tagged
+      # at an older action version, and (b) a compromised PyPI release would
+      # run unverified code on every caller's runner.
+      run: |
+        pip install --quiet "gitchi==0.4.0"
+
+    - name: Compute pet vitals and decide whether to comment
+      id: check
+      shell: bash
+      env:
+        GITHUB_WORKSPACE: ${{ github.workspace }}
+        HUNGER_THRESHOLD: ${{ inputs.hunger-threshold }}
+        HEALTH_THRESHOLD: ${{ inputs.health-threshold }}
+        COMMENT_MARKER: ${{ inputs.comment-marker }}
+        # `check_pet.py` calls the GitHub API to look up an existing
+        # marker-stamped comment so subsequent pushes patch in place rather
+        # than stacking new comments. Without the token the lookup silently
+        # returns None and every push creates a duplicate. GITHUB_REPOSITORY
+        # and GITHUB_EVENT_PATH are auto-populated by Actions itself; the
+        # token is the only thing we need to forward explicitly.
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        python "${{ github.action_path }}/check_pet.py" \
+          --workspace "$GITHUB_WORKSPACE" \
+          --hunger-threshold "$HUNGER_THRESHOLD" \
+          --health-threshold "$HEALTH_THRESHOLD" \
+          --comment-marker "$COMMENT_MARKER" \
+          --output "$GITHUB_OUTPUT"
+
+    - name: Post or update PR comment
+      if: steps.check.outputs.needs_comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        COMMENT_BODY: ${{ steps.check.outputs.comment_body }}
+        EXISTING_COMMENT_ID: ${{ steps.check.outputs.existing_comment_id }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        if [ -n "$EXISTING_COMMENT_ID" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$EXISTING_COMMENT_ID" \
+            -f body="$COMMENT_BODY"
+        else
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" \
+            -f body="$COMMENT_BODY"
+        fi

@@ -59,7 +59,11 @@ To cut a release:
 ```bash
 # bump the version in pyproject.toml + src/gitchi/__init__.py + CHANGELOG.md
 # (we keep them in sync as a deliberate three-place edit so each can be
-# audited independently in PR review)
+# audited independently in PR review;
+# also update the pinned `pip install gitchi==X.Y.Z` line in
+# .github/actions/check-pet/action.yml — the action installs the same
+# gitchi version it's tagged at, and an unpinned install would couple
+# every caller's CI to PyPI's latest)
 
 git checkout -b chore/v<X>.<Y>.<Z>
 # ...edit, run tests...

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-05-10
+
+### Added
+- **GitHub Action: `check-pet`.** A composite action at
+  `.github/actions/check-pet/` that other repositories can call from
+  their `pull_request` workflows. It installs gitchi from PyPI, computes
+  the target repo's current pet vitals, and posts a sticky comment on
+  the PR if hunger or health falls below configurable thresholds. The
+  comment updates in place on subsequent pushes instead of stacking new
+  ones (HTML-marker sticky-comment pattern). Inputs:
+  `hunger-threshold` (default 30), `health-threshold` (default 50),
+  `comment-marker`, `github-token`. The calling job needs
+  `pull-requests: write`. See `.github/actions/check-pet/README.md` for
+  the full usage walkthrough.
+
 ## [0.3.0] — 2026-05-10
 
 ### Changed
