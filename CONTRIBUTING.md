@@ -9,8 +9,7 @@ something merged is low: it should be tested, it should pass `ruff` and
 ```bash
 git clone https://github.com/PedroCorreiaLuis/tama
 cd tama
-uv venv
-uv pip install -e ".[menubar,dev]"
+uv sync --extra menubar --extra dev   # creates .venv and installs locked deps
 ```
 
 ## Run tests
