@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-05-10
+
+### Added
+- **News log.** Each `tama refresh` diffs the post-scan state against a
+  snapshot taken before the scan and emits typed events: `hatched`,
+  `evolved`, `became_ghost`, `revived`, `became_hungry`, and
+  `recovered_from_hunger`. Surfaced in the refresh output, via a new
+  `tama news` command, and in a side panel in the TUI.
+- **Local Energy proxy.** Energy used to be a hardcoded 50 when GitHub
+  enrichment was off. Now derived from local signals: uncommitted files,
+  stale local branches, untracked top-level directories. GitHub
+  enrichment still takes priority when enabled.
+- **`tama ignore` / `tama unignore`.** Hide pets that shouldn't be
+  tracked (vendored forks, inherited clones). Distinct from `bury`.
+  Ignored pets are also filtered out of the news feed. `tama list --all`
+  re-includes them.
+- **Smarter `tama feed`.** Opens `$EDITOR` directly at the TODO line.
+  Recognises VS Code / Cursor / Sublime / Vim / Emacs goto conventions.
+  `--no-open` keeps the print-only behavior for scripted callers.
+- **Time-series history + sparklines.** New `vitals_history` table; each
+  refresh appends one row per pet. `tama show <repo>` renders a Unicode
+  sparkline per vital across the last 20 scans.
+- **Stage transitions in the news log** with a ✨ icon and clear
+  before-→-after message.
+
+### Fixed
+- TUI `f` keybind no longer silently auto-opens `$EDITOR` (which would
+  also silently swallow rc=127 when no editor was configured). Press
+  `f` to surface the TODO; press `e` to jump there.
+- News events now read back in their documented priority order within a
+  single refresh batch (stage transitions before hunger crossings).
+  The previous query tiebroke on `id DESC`, inverting the insertion
+  order.
+
 ## [0.1.1] — 2026-05-10
 
 ### Fixed
