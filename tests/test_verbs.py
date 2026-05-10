@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tama import verbs
-from tama.verbs import _goto_argv, detect_runner, feed, pet
+from gitchi import verbs
+from gitchi.verbs import _goto_argv, detect_runner, feed, pet
 
 
 def test_feed_finds_a_todo(tmp_path: Path) -> None:
@@ -40,7 +40,7 @@ def test_detect_runner_none_when_no_marker(tmp_path: Path) -> None:
 
 @pytest.fixture
 def captured_run(monkeypatch):
-    """Stub subprocess.run inside `tama.verbs` and capture its argv."""
+    """Stub subprocess.run inside `gitchi.verbs` and capture its argv."""
     captured: dict[str, list[str]] = {}
 
     def _fake_run(args, **kwargs):

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from tama.models import Repo, Species, Stage, Vitals
-from tama.store import (
+from gitchi.models import Repo, Species, Stage, Vitals
+from gitchi.store import (
     all_pets,
     bury,
     connect,
@@ -133,8 +133,8 @@ def test_recent_news_preserves_insertion_order_within_a_batch(tmp_path: Path) ->
     order — contradicting `news.py`'s documented priority order (stage events
     before hunger events).
     """
-    from tama.models import NewsEvent
-    from tama.store import append_news_events, recent_news
+    from gitchi.models import NewsEvent
+    from gitchi.store import append_news_events, recent_news
 
     db = tmp_path / "ordering.db"
     events = [

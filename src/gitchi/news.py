@@ -2,7 +2,7 @@
 
 `diff_snapshots(before, after)` returns a list of `NewsEvent`. The orchestrator
 in `refresh.py` calls this once per refresh, then persists the events via
-`store.append_news_events`. The CLI surfaces them via `tama news` and the TUI
+`store.append_news_events`. The CLI surfaces them via `gitchi news` and the TUI
 shows the most recent ones in a side panel.
 
 Events we surface (in priority order):

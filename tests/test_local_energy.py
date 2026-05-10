@@ -5,14 +5,14 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from tama.local_energy import (
+from gitchi.local_energy import (
     UNCOMMITTED_PENALTY,
     UNTRACKED_DIR_PENALTY,
     combine,
     score_for,
     signals,
 )
-from tama.models import LocalEnergySignals
+from gitchi.models import LocalEnergySignals
 
 
 def test_combine_returns_100_when_clean() -> None:

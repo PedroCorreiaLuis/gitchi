@@ -1,6 +1,6 @@
 """SQLite persistence layer.
 
-Migrations live in `src/tama/migrations/` and are applied in filename order
+Migrations live in `src/gitchi/migrations/` and are applied in filename order
 on every connection. Applied filenames are recorded in the `schema_migrations`
 table; the `meta` table is reserved for application key/value state such as
 the monthly Claude token budget.
@@ -62,7 +62,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 
 def _iter_migration_files() -> Iterator[tuple[str, str]]:
-    pkg = files("tama").joinpath("migrations")
+    pkg = files("gitchi").joinpath("migrations")
     names = sorted(p.name for p in pkg.iterdir() if p.name.endswith(".sql"))
     for name in names:
         yield name, pkg.joinpath(name).read_text(encoding="utf-8")
@@ -203,7 +203,7 @@ def all_pets(conn: sqlite3.Connection, *, include_ignored: bool = False) -> list
     """Return every pet with cached vitals.
 
     Ignored pets are filtered out by default — `include_ignored=True` for the
-    `tama list --all` view that surfaces them.
+    `gitchi list --all` view that surfaces them.
     """
     rows = conn.execute(_PETS_SELECT + " ORDER BY r.path").fetchall()
     pets: list[Pet] = []
@@ -338,7 +338,7 @@ def currently_ignored_paths(conn: sqlite3.Connection) -> set[str]:
     """Return the set of currently-ignored repo paths (as path strings).
 
     Used by the refresh orchestrator to filter ignored repos out of the news
-    events stream — the `tama ignore` docstring promises this and `all_pets`
+    events stream — the `gitchi ignore` docstring promises this and `all_pets`
     alone only filters the list view, not the news feed.
     """
     rows = conn.execute("SELECT repo_path FROM ignore_state").fetchall()

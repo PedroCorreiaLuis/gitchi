@@ -1,4 +1,4 @@
-"""Typer-driven entry point for `tama`."""
+"""Typer-driven entry point for `gitchi`."""
 
 from __future__ import annotations
 
@@ -19,12 +19,12 @@ from .species import emoji_for
 from .store import all_pets, connect, find_repo_by_name, get_pet, vitals_history
 
 app = typer.Typer(
-    name="tama",
+    name="gitchi",
     help="A virtual pet for every git repo.",
     no_args_is_help=False,
     add_completion=False,
 )
-config_app = typer.Typer(help="Manage tama configuration.")
+config_app = typer.Typer(help="Manage gitchi configuration.")
 cron_app = typer.Typer(help="Manage the nightly refresh launchd job (macOS).")
 menubar_app = typer.Typer(help="Manage the menu-bar app (macOS).")
 app.add_typer(config_app, name="config")
@@ -76,7 +76,7 @@ def news(limit: int = typer.Option(20, help="how many recent events to show")) -
     events = refresh_mod.list_recent_news(limit=limit)
     if not events:
         console.print(
-            "[yellow]No news yet. Run [bold]tama refresh[/bold] a few times "
+            "[yellow]No news yet. Run [bold]gitchi refresh[/bold] a few times "
             "and we'll have something to report.[/yellow]"
         )
         return
@@ -88,17 +88,17 @@ def news(limit: int = typer.Option(20, help="how many recent events to show")) -
 def list_cmd(
     sort: str = typer.Option("hunger", help="hunger | health | mood | age | name"),
     show_ignored: bool = typer.Option(
-        False, "--all", help="include pets you've explicitly `tama ignore`d"
+        False, "--all", help="include pets you've explicitly `gitchi ignore`d"
     ),
 ) -> None:
     """List all pets in a sortable table."""
     with connect() as conn:
         pets = all_pets(conn, include_ignored=show_ignored)
     if not pets:
-        console.print("[yellow]No pets yet. Run [bold]tama refresh[/bold] first.[/yellow]")
+        console.print("[yellow]No pets yet. Run [bold]gitchi refresh[/bold] first.[/yellow]")
         return
     pets.sort(key=_sort_key(sort))
-    table = Table(title=f"tama — {len(pets)} pets")
+    table = Table(title=f"gitchi — {len(pets)} pets")
     table.add_column("name")
     table.add_column("species")
     table.add_column("stage")
@@ -232,11 +232,11 @@ def ignore(
     name: str,
     reason: str = typer.Option("", help="optional note: why this repo doesn't belong"),
 ) -> None:
-    """Hide a pet from `tama list` and the news feed.
+    """Hide a pet from `gitchi list` and the news feed.
 
     Use this for repos you don't actually maintain (vendored forks, clones you
     inherited). Different from `bury` — burying is for projects that died with
-    dignity. Ignored pets are still in the DB and reappear with `tama list --all`.
+    dignity. Ignored pets are still in the DB and reappear with `gitchi list --all`.
     """
     pet = _resolve(name)
     if pet is None:
@@ -347,7 +347,7 @@ def _resolve(name: str) -> Pet | None:
                 return pet
         repo = find_repo_by_name(conn, name)
         if repo is None:
-            console.print(f"[red]no pet named[/red] {name}. Try [bold]tama list[/bold].")
+            console.print(f"[red]no pet named[/red] {name}. Try [bold]gitchi list[/bold].")
             return None
         return get_pet(conn, repo.path)
 

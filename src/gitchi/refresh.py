@@ -12,7 +12,7 @@ The refresh pipeline does four things in order:
     cache the TUI reads) and `vitals_history` (an append-only time series
     that powers sparklines).
 4.  Diff the post-scan state against the pre-scan snapshot and append the
-    resulting `NewsEvent`s — these are what `tama news` and the dashboard's
+    resulting `NewsEvent`s — these are what `gitchi news` and the dashboard's
     side panel surface to the user.
 """
 
@@ -113,8 +113,8 @@ def refresh(cfg: Config | None = None) -> RefreshSummary:
 
         ignored = currently_ignored_paths(conn)
         raw_events = news_mod.diff_snapshots(before, after, name_for=repo_name_map(conn))
-        # The `tama ignore` docstring promises ignored repos stay out of the
-        # news feed too — not just `tama list`. Filter them out here so the
+        # The `gitchi ignore` docstring promises ignored repos stay out of the
+        # news feed too — not just `gitchi list`. Filter them out here so the
         # promise is implementation-true.
         events = [e for e in raw_events if str(e.repo_path) not in ignored]
         append_news_events(conn, events)

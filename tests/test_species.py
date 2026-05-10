@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from tama.models import Repo, Species
-from tama.species import emoji_for, species_for
+from gitchi.models import Repo, Species
+from gitchi.species import emoji_for, species_for
 
 
 def _r(lang: str | None) -> Repo:

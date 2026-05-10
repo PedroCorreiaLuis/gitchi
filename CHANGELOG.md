@@ -5,27 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-05-10
+
+### Changed
+- **Renamed from `tama` to `gitchi`.** The PyPI name `tama` was already
+  claimed, so the entire project — package, import, CLI binary, config
+  directory, launchd plist label, all docs and references — moves to
+  `gitchi`. Existing users on `tama` will need to re-run `gitchi refresh`
+  to rebuild their dashboard (the old `tama` config / data directories
+  are not migrated automatically).
+- **Release workflow now publishes the `gitchi` package on PyPI** via
+  trusted publishing — first publish goes out with v0.3.0.
+
 ## [0.2.0] — 2026-05-10
 
 ### Added
-- **News log.** Each `tama refresh` diffs the post-scan state against a
+- **News log.** Each `gitchi refresh` diffs the post-scan state against a
   snapshot taken before the scan and emits typed events: `hatched`,
   `evolved`, `became_ghost`, `revived`, `became_hungry`, and
   `recovered_from_hunger`. Surfaced in the refresh output, via a new
-  `tama news` command, and in a side panel in the TUI.
+  `gitchi news` command, and in a side panel in the TUI.
 - **Local Energy proxy.** Energy used to be a hardcoded 50 when GitHub
   enrichment was off. Now derived from local signals: uncommitted files,
   stale local branches, untracked top-level directories. GitHub
   enrichment still takes priority when enabled.
-- **`tama ignore` / `tama unignore`.** Hide pets that shouldn't be
+- **`gitchi ignore` / `gitchi unignore`.** Hide pets that shouldn't be
   tracked (vendored forks, inherited clones). Distinct from `bury`.
-  Ignored pets are also filtered out of the news feed. `tama list --all`
+  Ignored pets are also filtered out of the news feed. `gitchi list --all`
   re-includes them.
-- **Smarter `tama feed`.** Opens `$EDITOR` directly at the TODO line.
+- **Smarter `gitchi feed`.** Opens `$EDITOR` directly at the TODO line.
   Recognises VS Code / Cursor / Sublime / Vim / Emacs goto conventions.
   `--no-open` keeps the print-only behavior for scripted callers.
 - **Time-series history + sparklines.** New `vitals_history` table; each
-  refresh appends one row per pet. `tama show <repo>` renders a Unicode
+  refresh appends one row per pet. `gitchi show <repo>` renders a Unicode
   sparkline per vital across the last 20 scans.
 - **Stage transitions in the news log** with a ✨ icon and clear
   before-→-after message.
@@ -55,12 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `store.connect()` is now a context manager that actually closes the SQLite
   connection on exit. Previously `with connect(...)` leaked the underlying
   file descriptor on every CLI invocation, TUI rescan, and menu-bar tick.
-- `tama pet` now shell-tokenises `$EDITOR` via `shlex.split`, so values like
+- `gitchi pet` now shell-tokenises `$EDITOR` via `shlex.split`, so values like
   `EDITOR="code --wait"` or `EDITOR="emacsclient -t"` work as expected
   instead of crashing with `FileNotFoundError`.
 - The menu-bar "Open dashboard" action launches the TUI for real.
-  `open -a Terminal tama` was treating "tama" as a file path; we now drive
-  Terminal.app via `osascript` and invoke `sys.executable -m tama` so the
+  `open -a Terminal gitchi` was treating "gitchi" as a file path; we now drive
+  Terminal.app via `osascript` and invoke `sys.executable -m gitchi` so the
   new shell uses the same Python as the menu-bar process.
 
 ### Added
@@ -79,4 +91,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional Claude-powered Mood sentiment with prompt caching and a hard
   monthly token cap
 - Verbs: `feed`, `play`, `pet`, `bury`, `revive`
-- Config file at `~/.config/tama/config.toml` via `platformdirs`
+- Config file at `~/.config/gitchi/config.toml` via `platformdirs`

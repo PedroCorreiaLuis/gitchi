@@ -126,7 +126,7 @@ class NewsEvent:
     # 'revived', 'recovered_from_hunger'
     from_value: str | None
     to_value: str | None
-    detail: str  # human-readable summary used by `tama news` and refresh output
+    detail: str  # human-readable summary used by `gitchi news` and refresh output
 
     @property
     def headline(self) -> str:

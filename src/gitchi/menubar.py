@@ -1,10 +1,10 @@
 """macOS menu-bar app — shows the most malnourished pets at a glance.
 
-Optional. Install with `pip install -e ".[menubar]"` and run `tama-menubar`
-or `tama menubar run` to launch it. The icon is a small heart that updates
+Optional. Install with `pip install -e ".[menubar]"` and run `gitchi-menubar`
+or `gitchi menubar run` to launch it. The icon is a small heart that updates
 its title with `🐣 N · 👻 M` (alive / ghosts).
 
-This module imports `rumps` lazily so the rest of tama works on systems
+This module imports `rumps` lazily so the rest of gitchi works on systems
 without it (Linux, CI).
 """
 
@@ -26,11 +26,11 @@ TOP_HUNGRY_LIMIT = 5
 
 
 def _dashboard_launch_argv() -> list[str]:
-    """Build the argv that opens a fresh Terminal window running `tama`.
+    """Build the argv that opens a fresh Terminal window running `gitchi`.
 
-    `open -a Terminal tama` would tell macOS to open a *file* named "tama"; to
+    `open -a Terminal gitchi` would tell macOS to open a *file* named "gitchi"; to
     actually run the CLI we use ``osascript`` to drive Terminal.app's
-    ``do script`` directly. We invoke ``sys.executable -m tama`` so the new
+    ``do script`` directly. We invoke ``sys.executable -m gitchi`` so the new
     shell hits the same Python the menu-bar process is using, rather than
     relying on PATH lookup in the user's default login shell.
 
@@ -41,7 +41,7 @@ def _dashboard_launch_argv() -> list[str]:
     ``o'brien``), so we must additionally escape ``\\`` and ``"`` for the
     AppleScript layer.
     """
-    cmd = f"{shlex.quote(sys.executable)} -m tama"
+    cmd = f"{shlex.quote(sys.executable)} -m gitchi"
     cmd_for_applescript = cmd.replace("\\", "\\\\").replace('"', '\\"')
     script = f'tell application "Terminal" to do script "{cmd_for_applescript}"'
     return ["osascript", "-e", script]
@@ -49,7 +49,7 @@ def _dashboard_launch_argv() -> list[str]:
 
 def main() -> None:
     if sys.platform != "darwin":
-        print("tama menubar is macOS-only; on other platforms run `tama` instead.")
+        print("gitchi menubar is macOS-only; on other platforms run `gitchi` instead.")
         sys.exit(2)
     try:
         import rumps  # type: ignore[import-not-found]
@@ -64,10 +64,10 @@ class _MenubarApp:
 
     def __init__(self, rumps_module: Any) -> None:
         self.rumps = rumps_module
-        self.app = rumps_module.App("tama", title="🐣")
+        self.app = rumps_module.App("gitchi", title="🐣")
         self.refresh_item = rumps_module.MenuItem("Refresh now", callback=self._refresh)
         self.dashboard_item = rumps_module.MenuItem("Open dashboard", callback=self._open_dashboard)
-        self.quit_item = rumps_module.MenuItem("Quit tama", callback=self._quit)
+        self.quit_item = rumps_module.MenuItem("Quit gitchi", callback=self._quit)
         self.app.menu = [self.refresh_item, None, self.dashboard_item, None, self.quit_item]
         self._timer = rumps_module.Timer(self._tick, REFRESH_INTERVAL_SECONDS)
         self._timer.start()
@@ -87,7 +87,7 @@ class _MenubarApp:
         self.app.title = f"🐣 {len(alive)} · 👻 {len(ghosts)}"
 
         # Replace dynamic items: clear keys after the static head and re-add.
-        static_keys = {"Refresh now", "Open dashboard", "Quit tama"}
+        static_keys = {"Refresh now", "Open dashboard", "Quit gitchi"}
         for key in list(self.app.menu.keys()):
             if key in static_keys or key is None:
                 continue
@@ -106,10 +106,10 @@ class _MenubarApp:
         def handler(_sender: object) -> None:
             hit = verbs_mod.feed(repo_path)
             if hit is None:
-                self.rumps.notification("tama", repo_path.name, "purrs. no TODOs found.")
+                self.rumps.notification("gitchi", repo_path.name, "purrs. no TODOs found.")
             else:
                 self.rumps.notification(
-                    "tama",
+                    "gitchi",
                     repo_path.name,
                     f"{hit.file.name}:{hit.line} — {hit.message[:80]}",
                 )

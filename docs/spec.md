@@ -1,11 +1,11 @@
-# tama — design spec
+# gitchi — design spec
 
 **Date:** 2026-05-10
 **Status:** v0.1.0 — initial implementation
 
 ## Concept
 
-`tama` turns every git repo on a developer's machine into a virtual pet.
+`gitchi` turns every git repo on a developer's machine into a virtual pet.
 Pets have stats derived from real repo activity. The collection becomes a
 glanceable dashboard for which projects are alive, which are dying, and
 which deserve a quiet burial.
@@ -30,7 +30,7 @@ them. A static list won't trigger action. A pet that visibly suffers might.
 ## Architecture
 
 ```
-src/tama/
+src/gitchi/
 ├── cli.py        # typer entrypoint, all top-level verbs
 ├── tui.py        # textual dashboard (read-only renderer)
 ├── menubar.py    # rumps menu-bar app (macOS optional extra)
@@ -114,7 +114,7 @@ The mapping table lives in `species.py`.
 
 ## Configuration
 
-`~/.config/tama/config.toml` (resolved via `platformdirs`):
+`~/.config/gitchi/config.toml` (resolved via `platformdirs`):
 
 ```toml
 [scan]
@@ -137,7 +137,7 @@ enabled = false
 
 ## Persistence
 
-SQLite at `~/.local/share/tama/tama.db` (resolved via `platformdirs`).
+SQLite at `~/.local/share/gitchi/gitchi.db` (resolved via `platformdirs`).
 
 Tables:
 - `repos(path TEXT PK, name, primary_language, first_commit, last_commit, commit_count, size_bytes, has_tests, has_ci, last_scanned)`
@@ -146,7 +146,7 @@ Tables:
 - `bury_state(repo_path, buried_at, reason)`
 - `meta(key, value)` — schema version, monthly token usage, etc.
 
-Migrations are SQL files in `src/tama/migrations/` named `NNN_<title>.sql`,
+Migrations are SQL files in `src/gitchi/migrations/` named `NNN_<title>.sql`,
 applied in order on startup.
 
 ## Verbs
@@ -170,16 +170,16 @@ applied in order on startup.
 ## Menu-bar (macOS)
 
 `rumps`-based icon. Click reveals:
-- Top 3 hungriest pets (one click → `tama feed <repo>`)
+- Top 3 hungriest pets (one click → `gitchi feed <repo>`)
 - Total pet count and ghost count
-- "Open dashboard" → spawns `tama` in a new Terminal tab
+- "Open dashboard" → spawns `gitchi` in a new Terminal tab
 - Refreshes every 15 minutes via background timer
 
 ## Cron
 
-`tama cron install` writes `~/Library/LaunchAgents/com.tama.refresh.plist`
-and `launchctl load`s it. Runs `tama refresh` nightly at 03:30. Logs to
-`~/.local/share/tama/cron.log`.
+`gitchi cron install` writes `~/Library/LaunchAgents/com.gitchi.refresh.plist`
+and `launchctl load`s it. Runs `gitchi refresh` nightly at 03:30. Logs to
+`~/.local/share/gitchi/cron.log`.
 
 ## Tests
 

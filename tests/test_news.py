@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tama.models import Stage, VitalsSnapshot
-from tama.news import diff_snapshots
+from gitchi.models import Stage, VitalsSnapshot
+from gitchi.news import diff_snapshots
 
 
 def _snap(path: str, stage: Stage, hunger: int = 100) -> VitalsSnapshot:
