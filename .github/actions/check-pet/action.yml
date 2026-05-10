@@ -55,6 +55,13 @@ runs:
         HUNGER_THRESHOLD: ${{ inputs.hunger-threshold }}
         HEALTH_THRESHOLD: ${{ inputs.health-threshold }}
         COMMENT_MARKER: ${{ inputs.comment-marker }}
+        # `check_pet.py` calls the GitHub API to look up an existing
+        # marker-stamped comment so subsequent pushes patch in place rather
+        # than stacking new comments. Without the token the lookup silently
+        # returns None and every push creates a duplicate. GITHUB_REPOSITORY
+        # and GITHUB_EVENT_PATH are auto-populated by Actions itself; the
+        # token is the only thing we need to forward explicitly.
+        GH_TOKEN: ${{ inputs.github-token }}
       run: |
         python "${{ github.action_path }}/check_pet.py" \
           --workspace "$GITHUB_WORKSPACE" \
