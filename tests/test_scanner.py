@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tama.models import ScanConfig
@@ -59,3 +60,36 @@ def test_code_wins_over_markdown(make_repo, tmp_path: Path) -> None:
     )
     repos = find_repos([tmp_path], ScanConfig())
     assert repos[0].primary_language == "Go"
+
+
+def test_first_commit_is_root_not_latest(make_repo, tmp_path: Path) -> None:
+    """Regression test for the `git log --reverse --max-count=1` footgun.
+
+    git applies `--max-count` BEFORE reversing the output, so the previous
+    implementation returned the most recent commit rather than the root
+    commit — making every repo appear 0 days old. The fix uses
+    `--max-parents=0` to find root commits directly. This test builds a
+    three-commit repo whose root is ~60 days old and asserts the scanner
+    sees the actual age, not today's date.
+    """
+    make_repo(
+        "old_repo",
+        commits=3,
+        first_offset_days=60,
+        last_offset_days=0,
+    )
+    repos = find_repos([tmp_path], ScanConfig())
+    assert len(repos) == 1
+    repo = repos[0]
+    assert repo.first_commit is not None, "first_commit should be detected"
+    assert repo.last_commit is not None
+
+    age_days_first = (datetime.now(UTC) - repo.first_commit).days
+    age_days_last = (datetime.now(UTC) - repo.last_commit).days
+
+    # Root commit was backdated 60 days; allow a generous fuzz for clock drift.
+    assert age_days_first >= 55, (
+        f"first_commit looks like the LATEST commit (age={age_days_first} days); "
+        "the --reverse + --max-count footgun is back."
+    )
+    assert age_days_last <= 1, f"last_commit should be near now, got {age_days_last} days"

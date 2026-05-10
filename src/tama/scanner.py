@@ -210,10 +210,21 @@ def _git_last_commit_time(path: Path) -> datetime | None:
 
 
 def _git_first_commit_time(path: Path) -> datetime | None:
-    out = _git_run(path, "log", "--reverse", "--format=%ct", "--max-count=1")
+    """Return the timestamp of the repo's earliest (root) commit.
+
+    `git log --reverse --max-count=1` is a footgun: git applies the count
+    limit BEFORE reversing the output, so it returns the most recent commit,
+    not the first. Use `--max-parents=0` to find the actual root commit(s)
+    instead — there is usually exactly one, and we take the oldest if a repo
+    has multiple roots (e.g. after `git replace` or octopus history rewrites).
+    """
+    out = _git_run(path, "log", "--max-parents=0", "--format=%ct", "HEAD")
     if not out:
         return None
-    return datetime.fromtimestamp(int(out.splitlines()[0]), tz=UTC)
+    timestamps = [int(line) for line in out.splitlines() if line.strip().isdigit()]
+    if not timestamps:
+        return None
+    return datetime.fromtimestamp(min(timestamps), tz=UTC)
 
 
 def _git_commit_count(path: Path) -> int:
