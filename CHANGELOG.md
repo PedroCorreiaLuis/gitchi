@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-05-10
+
+### Fixed
+- Pet evolution stages were stuck at `egg` for nearly every repo because
+  `_git_first_commit_time` invoked `git log --reverse --max-count=1`,
+  which is a footgun: git applies `--max-count` *before* reversing the
+  output, so it returned the most recent commit instead of the first.
+  Replaced with `git log --max-parents=0 --format=%ct HEAD` to find the
+  root commit directly. Includes a 60-day backdated regression test.
+
 ## [0.1.0] — 2026-05-10
 
 ### Fixed
