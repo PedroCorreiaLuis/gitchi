@@ -16,7 +16,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from .config import db_path
-from .models import NewsEvent, Pet, Repo, Species, Stage, Vitals, VitalsSnapshot
+from .models import NewsEvent, Pet, Rarity, Repo, Species, Stage, Vitals, VitalsSnapshot
 
 
 @contextmanager
@@ -158,12 +158,13 @@ def upsert_vitals(
     vitals: Vitals,
     stage: Stage,
     species: Species,
+    rarity: Rarity = Rarity.COMMON,
 ) -> None:
     conn.execute(
         """
         INSERT INTO vitals_cache (repo_path, hunger, health, energy, mood, age_days,
-                                  stage, species, computed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  stage, species, rarity, computed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(repo_path) DO UPDATE SET
             hunger=excluded.hunger,
             health=excluded.health,
@@ -172,6 +173,7 @@ def upsert_vitals(
             age_days=excluded.age_days,
             stage=excluded.stage,
             species=excluded.species,
+            rarity=excluded.rarity,
             computed_at=excluded.computed_at
         """,
         (
@@ -183,13 +185,14 @@ def upsert_vitals(
             vitals.age_days,
             stage.value,
             species.value,
+            rarity.value,
             _now_epoch(),
         ),
     )
 
 
 _PETS_SELECT = """
-    SELECT r.*, v.hunger, v.health, v.energy, v.mood, v.age_days, v.stage, v.species,
+    SELECT r.*, v.hunger, v.health, v.energy, v.mood, v.age_days, v.stage, v.species, v.rarity,
            b.buried_at, b.reason AS bury_reason,
            i.ignored_at
     FROM repos r
@@ -237,6 +240,7 @@ def _row_to_pet(row: sqlite3.Row) -> Pet:
         species=Species(row["species"]),
         stage=Stage(row["stage"]),
         vitals=vitals,
+        rarity=Rarity(row["rarity"]) if row["rarity"] else Rarity.COMMON,
         buried=row["buried_at"] is not None,
         bury_reason=row["bury_reason"],
         ignored=row["ignored_at"] is not None,
@@ -442,12 +446,13 @@ def append_vitals_history(
     vitals: Vitals,
     stage: Stage,
     species: Species,
+    rarity: Rarity = Rarity.COMMON,
 ) -> None:
     conn.execute(
         """
         INSERT INTO vitals_history (repo_path, hunger, health, energy, mood, age_days,
-                                    stage, species, recorded_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    stage, species, rarity, recorded_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             str(repo_path),
@@ -458,6 +463,7 @@ def append_vitals_history(
             vitals.age_days,
             stage.value,
             species.value,
+            rarity.value,
             _now_epoch(),
         ),
     )

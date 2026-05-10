@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-05-10
+
+### Added
+- **Pet rarities.** Every pet rolls a tier — common (50%), uncommon (25%),
+  rare (15%), epic (7%), mythic (2.5%), or legendary (0.5%) — that's
+  deterministic per repo. The roll uses a stable hash of the repo path
+  and first-commit timestamp, so the same repo always gets the same tier
+  across scans; the distribution across a sufficiently large repo zoo
+  matches the named percentages within sampling noise.
+  - Surfaced in `gitchi list` (new column, colour-coded), `gitchi show`
+    (rarity line + name-bar suffix), and the TUI (new column +
+    detail-panel line).
+  - Migration 003 adds a `rarity` column to `vitals_cache` and
+    `vitals_history`; both default to `common` for pre-existing rows on
+    upgrade (and get overwritten on the next refresh).
+  - Distribution test (`test_rarity`) verifies the percentages match
+    target tolerance over 20 000 synthetic repos.
+
 ## [0.4.0] — 2026-05-10
 
 ### Added

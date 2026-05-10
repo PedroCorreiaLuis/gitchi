@@ -29,6 +29,29 @@ class Stage(StrEnum):
     GHOST = "ghost"
 
 
+class Rarity(StrEnum):
+    """A pet's rarity tier.
+
+    Deterministic per repo (see `rarity.rarity_for`) — a given repo always
+    rolls the same tier across scans. The distribution across the repo zoo
+    follows fixed gacha-style percentages:
+
+    - common:    50%
+    - uncommon:  25%
+    - rare:      15%
+    - epic:       7%
+    - mythic:     2.5%
+    - legendary:  0.5%
+    """
+
+    COMMON = "common"
+    UNCOMMON = "uncommon"
+    RARE = "rare"
+    EPIC = "epic"
+    MYTHIC = "mythic"
+    LEGENDARY = "legendary"
+
+
 @dataclass(frozen=True, slots=True)
 class Repo:
     path: Path
@@ -60,6 +83,7 @@ class Pet:
     species: Species
     stage: Stage
     vitals: Vitals
+    rarity: Rarity = Rarity.COMMON
     buried: bool = False
     bury_reason: str | None = None
     ignored: bool = False

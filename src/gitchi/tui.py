@@ -18,6 +18,7 @@ from . import refresh as refresh_mod
 from . import verbs as verbs_mod
 from .art import render
 from .models import NewsEvent, Pet, Stage
+from .rarity import emoji_for as rarity_emoji_for
 from .species import emoji_for
 
 NEWS_PANEL_LIMIT = 6
@@ -35,8 +36,10 @@ class DetailPanel(Static):
         if pet is None:
             self.update("[dim]no pets — run `gitchi refresh` to scan.[/dim]")
             return
+        rarity_tag = f"{rarity_emoji_for(pet.rarity)} {pet.rarity.value}"
         lines = [
-            f"[bold]{pet.repo.name}[/bold]  {emoji_for(pet.species)} {pet.species.value} · {pet.stage.value}",
+            f"[bold]{pet.repo.name}[/bold]  {emoji_for(pet.species)} {pet.species.value} · "
+            f"{pet.stage.value} · {rarity_tag}",
             f"[dim]{pet.repo.path}[/dim]",
             "",
             render(pet.species, pet.stage),
@@ -46,8 +49,9 @@ class DetailPanel(Static):
             f"energy {_bar(pet.vitals.energy)} {pet.vitals.energy:3d}",
             f"mood   {_bar(pet.vitals.mood)} {pet.vitals.mood:3d}",
             "",
-            f"age   {pet.vitals.age_days} days",
-            f"state {pet.status_word}",
+            f"age    {pet.vitals.age_days} days",
+            f"rarity {rarity_tag}",
+            f"state  {pet.status_word}",
         ]
         if pet.ignored:
             lines.append("[dim italic]ignored[/dim italic]")
@@ -111,7 +115,7 @@ class GitchiApp(App[None]):
         with Horizontal(id="body"):
             with Vertical():
                 table: DataTable[str] = DataTable(zebra_stripes=True, cursor_type="row")
-                table.add_columns("name", "species", "stage", "hunger", "mood", "status")
+                table.add_columns("name", "rarity", "species", "stage", "hunger", "mood", "status")
                 yield table
             yield DetailPanel(id="detail")
         yield NewsPanel(id="news")
@@ -130,6 +134,7 @@ class GitchiApp(App[None]):
             stage_marker = "👻" if pet.stage is Stage.GHOST else pet.stage.value
             table.add_row(
                 pet.repo.name,
+                f"{rarity_emoji_for(pet.rarity)} {pet.rarity.value}",
                 f"{emoji_for(pet.species)} {pet.species.value}",
                 stage_marker,
                 _bar(pet.vitals.hunger, 8),
