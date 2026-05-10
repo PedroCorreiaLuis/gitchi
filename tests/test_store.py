@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
+
+import pytest
 
 from tama.models import Repo, Species, Stage, Vitals
 from tama.store import (
@@ -104,3 +107,19 @@ def test_all_pets_empty_when_no_vitals(tmp_path: Path) -> None:
     with connect(db) as conn:
         upsert_repo(conn, repo)
         assert all_pets(conn) == []
+
+
+def test_connect_closes_connection_on_exit(tmp_path: Path) -> None:
+    """`with connect()` must actually close the sqlite handle on exit.
+
+    Regression test: bare `sqlite3.Connection.__exit__` only commits/rolls back;
+    leaving the file descriptor open. We promote `connect` to a contextmanager
+    that explicitly closes, and using a closed connection must raise.
+    """
+    db = tmp_path / "close.db"
+    with connect(db) as conn:
+        conn.execute("SELECT 1").fetchone()
+        held = conn
+
+    with pytest.raises(sqlite3.ProgrammingError):
+        held.execute("SELECT 1")

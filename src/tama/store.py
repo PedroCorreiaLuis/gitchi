@@ -1,7 +1,9 @@
 """SQLite persistence layer.
 
 Migrations live in `src/tama/migrations/` and are applied in filename order
-on every connection. Schema version is tracked in the `meta` table.
+on every connection. Applied filenames are recorded in the `schema_migrations`
+table; the `meta` table is reserved for application key/value state such as
+the monthly Claude token budget.
 """
 
 from __future__ import annotations
@@ -17,21 +19,23 @@ from .config import db_path
 from .models import Pet, Repo, Species, Stage, Vitals
 
 
-def connect(path: Path | None = None) -> sqlite3.Connection:
+@contextmanager
+def connect(path: Path | None = None) -> Iterator[sqlite3.Connection]:
+    """Open a SQLite connection, run pending migrations, close on exit.
+
+    Used as a context manager: ``with connect() as conn: ...``. The bare
+    ``sqlite3.Connection.__exit__`` only commits/rolls back, so wrapping it
+    here ensures the connection is actually closed and the file descriptor
+    released — important for long-running processes (TUI, menu-bar).
+    """
     target = path or db_path()
     target.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(target, detect_types=sqlite3.PARSE_DECLTYPES, isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
-    _migrate(conn)
-    return conn
-
-
-@contextmanager
-def session(path: Path | None = None) -> Iterator[sqlite3.Connection]:
-    conn = connect(path)
     try:
+        _migrate(conn)
         yield conn
     finally:
         conn.close()

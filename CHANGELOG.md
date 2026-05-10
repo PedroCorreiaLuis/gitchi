@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] — 2026-05-10
 
+### Fixed
+- `store.connect()` is now a context manager that actually closes the SQLite
+  connection on exit. Previously `with connect(...)` leaked the underlying
+  file descriptor on every CLI invocation, TUI rescan, and menu-bar tick.
+- `tama pet` now shell-tokenises `$EDITOR` via `shlex.split`, so values like
+  `EDITOR="code --wait"` or `EDITOR="emacsclient -t"` work as expected
+  instead of crashing with `FileNotFoundError`.
+- The menu-bar "Open dashboard" action launches the TUI for real.
+  `open -a Terminal tama` was treating "tama" as a file path; we now drive
+  Terminal.app via `osascript` and invoke `sys.executable -m tama` so the
+  new shell uses the same Python as the menu-bar process.
+
 ### Added
 - Repo scanner (`scanner.py`) with configurable depth and ignore globs
 - Five vital stats: Hunger, Health, Energy, Mood, Age

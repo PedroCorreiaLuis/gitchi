@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -133,16 +134,23 @@ def detect_runner(repo_path: Path) -> list[str] | None:
 
 
 def pet(repo_path: Path) -> int:
-    """Open the repo in $EDITOR (or `cursor` / `code` / `vim` fallback)."""
-    editor = os.environ.get("EDITOR")
-    if not editor:
+    """Open the repo in $EDITOR (or `cursor` / `code` / `vim` fallback).
+
+    `$EDITOR` is shell-tokenized so values like ``code --wait`` or
+    ``emacsclient -t`` work as expected.
+    """
+    editor = os.environ.get("EDITOR", "").strip()
+    if editor:
+        argv = shlex.split(editor)
+    else:
+        argv = []
         for candidate in ("cursor", "code", "subl", "vim"):
             if shutil.which(candidate):
-                editor = candidate
+                argv = [candidate]
                 break
-    if not editor:
+    if not argv:
         return 127
-    proc = subprocess.run([editor, str(repo_path)], check=False)
+    proc = subprocess.run([*argv, str(repo_path)], check=False)
     return proc.returncode
 
 

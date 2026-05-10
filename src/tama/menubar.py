@@ -10,6 +10,8 @@ without it (Linux, CI).
 
 from __future__ import annotations
 
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,20 @@ from .species import emoji_for
 
 REFRESH_INTERVAL_SECONDS = 15 * 60
 TOP_HUNGRY_LIMIT = 5
+
+
+def _dashboard_launch_argv() -> list[str]:
+    """Build the argv that opens a fresh Terminal window running `tama`.
+
+    `open -a Terminal tama` would tell macOS to open a *file* named "tama"; to
+    actually run the CLI we use ``osascript`` to drive Terminal.app's
+    ``do script`` directly. We invoke `sys.executable -m tama` so the new
+    shell hits the same Python the menu-bar process is using, rather than
+    relying on PATH lookup in the user's default login shell.
+    """
+    cmd = f"{shlex.quote(sys.executable)} -m tama"
+    script = f'tell application "Terminal" to do script "{cmd}"'
+    return ["osascript", "-e", script]
 
 
 def main() -> None:
@@ -96,9 +112,7 @@ class _MenubarApp:
         self._tick(_sender)
 
     def _open_dashboard(self, _sender: object) -> None:
-        import subprocess
-
-        subprocess.Popen(["open", "-a", "Terminal", "tama"])
+        subprocess.Popen(_dashboard_launch_argv())
 
     def _quit(self, _sender: object) -> None:
         self.rumps.quit_application()
