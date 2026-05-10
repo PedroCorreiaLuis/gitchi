@@ -34,10 +34,16 @@ A pet that visibly suffers when you ignore it might.
 ## Install
 
 ```bash
-# from PyPI (once published)
+# recommended: isolated install via pipx
+pipx install tama
+
+# or with uv's pipx-equivalent
+uv tool install tama
+
+# or classic pip
 pip install tama
 
-# from source
+# from source (for development)
 git clone https://github.com/PedroCorreiaLuis/tama
 cd tama
 uv sync --extra menubar --extra dev   # `menubar` is macOS-only; drop it on Linux
