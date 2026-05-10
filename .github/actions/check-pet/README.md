@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # needed so gitchi can read the root commit
-      - uses: PedroCorreiaLuis/gitchi/.github/actions/check-pet@v0.4.0
+      - uses: PedroCorreiaLuis/gitchi/.github/actions/check-pet@v0.5.0
         with:
           hunger-threshold: 30
           health-threshold: 50

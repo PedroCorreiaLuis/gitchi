@@ -52,23 +52,31 @@ uv sync --extra menubar --extra dev   # `menubar` is macOS-only; drop it on Linu
 ## Quick start
 
 ```bash
-# scan and view
-gitchi                          # opens the TUI dashboard
+# the typical flow
+gitchi refresh                 # scan all configured paths, recompute every pet
+gitchi                         # opens the TUI dashboard (also the default action)
+gitchi list                    # text table of all pets
+gitchi list --sort age         # sort by hunger | health | mood | age | name
+gitchi list --all              # include pets you've `gitchi ignore`d
+gitchi show <repo>             # full detail view with ASCII art + sparklines
+gitchi news                    # what changed since last refresh (evolutions, ghosts, …)
 
-# inspect a single pet
-gitchi show <repo>
-
-# interact
-gitchi feed <repo>              # nudges you to commit (suggests a stale TODO)
-gitchi play <repo>              # runs the test suite
-gitchi pet <repo>               # opens the repo in $EDITOR
-gitchi bury <repo>              # marks an abandoned repo at peace
-gitchi revive <repo>            # un-buries a ghost
+# interactions
+gitchi feed <repo>             # find a stale TODO/FIXME and jump $EDITOR to it
+gitchi feed <repo> --no-open   # …or just print it without opening the editor
+gitchi play <repo>             # detect the test runner (pytest/cargo/npm/…) and run it
+gitchi pet <repo>              # open the repo in $EDITOR
+gitchi bury <repo>             # mark an abandoned repo at peace (greyed out)
+gitchi revive <repo>           # un-bury a ghost
+gitchi ignore <repo>           # hide a repo entirely (vendored fork, inherited clone…)
+gitchi unignore <repo>         # bring it back
 
 # config
 gitchi config show
 gitchi config set scan.paths ~/code,~/projects
 gitchi config set scan.depth 4
+gitchi config set github.enabled true       # opt in to GitHub-API Energy enrichment
+gitchi config set claude.enabled true       # opt in to Claude-scored Mood (needs token cap)
 
 # bring optional services online
 export GITHUB_TOKEN=ghp_...           # enriches Energy with real issue/PR data
@@ -76,7 +84,8 @@ export ANTHROPIC_API_KEY=sk-ant-...   # enriches Mood from commit-message tone
 
 # automation (macOS)
 gitchi cron install             # writes a launchd plist that refreshes nightly
-gitchi menubar install          # registers the menu-bar app at login
+gitchi cron uninstall           # remove the launchd job
+gitchi menubar run              # run the rumps menu-bar app in the foreground
 ```
 
 ## Stats
@@ -85,11 +94,11 @@ Every pet has five vital signs. Each is a 0–100 score; higher is healthier.
 
 | Stat       | Source                                                        |
 |------------|---------------------------------------------------------------|
-| **Hunger** | Days since last commit. >90 days = starving = ghost.          |
-| **Health** | Test discovery + last test run result + dependency staleness. |
-| **Energy** | Open issue/PR rot from GitHub (optional). Stale = drained.    |
-| **Mood**   | Sentiment of last 30 commit messages via Claude (optional).   |
-| **Age**    | Days since first commit. Drives evolution stage.              |
+| **Hunger** | Days since last commit. >90 days = starving = ghost.                                            |
+| **Health** | Test discovery + last test run result + dependency staleness.                                   |
+| **Energy** | Local default: uncommitted files + stale local branches + untracked dirs. Optional: GitHub issue rot. |
+| **Mood**   | Neutral 50 by default. Optional: Claude scores the last 30 commit messages.                     |
+| **Age**    | Days since first commit. Drives evolution stage.                                                |
 
 ## Species
 
@@ -122,23 +131,49 @@ commit counts).
 
 A `git tag` or GitHub release accelerates the next evolution.
 
+## Rarity
+
+Every pet also rolls a rarity tier — common, uncommon, rare, epic, mythic,
+or legendary. The roll is **deterministic per repo**: the same repository
+always rolls the same tier across scans (the seed is a hash of the repo's
+absolute path and first-commit timestamp). Across a large enough zoo the
+distribution matches these percentages:
+
+| Tier       |   %   | Color   |
+|------------|-------|---------|
+| common     | 50.0% | dim     |
+| uncommon   | 25.0% | green   |
+| rare       | 15.0% | blue    |
+| epic       |  7.0% | magenta |
+| mythic     |  2.5% | red     |
+| legendary  |  0.5% | yellow  |
+
+Rarity is just visual flair — it doesn't affect any other stat or
+mechanic. If a repo is on a different path on a different machine it'll
+roll a different tier (rarity is per-checkout, not per-repo-content).
+
 ## Architecture
 
 ```
 src/gitchi/
-├── cli.py        # typer entrypoint
-├── tui.py        # textual dashboard
-├── menubar.py    # rumps menu-bar (macOS)
-├── scanner.py    # find .git repos
-├── stats.py      # compute the five vitals
-├── species.py    # repo → species mapping
-├── art.py        # ASCII pixel-art per species × stage
-├── store.py      # SQLite persistence (~/.local/share/gitchi/)
-├── verbs.py      # feed / play / pet / bury / revive
-├── config.py     # ~/.config/gitchi/config.toml
-├── github.py     # optional GitHub enrichment
-├── claude.py     # optional commit-mood sentiment
-└── cron.py       # launchd plist generator
+├── cli.py          # typer entrypoint
+├── tui.py          # textual dashboard
+├── menubar.py      # rumps menu-bar (macOS)
+├── scanner.py      # find .git repos
+├── stats.py        # compute the five vitals
+├── species.py      # repo → species mapping
+├── rarity.py       # deterministic gacha-style rarity tier
+├── art.py          # ASCII pixel-art per species × stage
+├── store.py        # SQLite persistence (~/.local/share/gitchi/)
+├── verbs.py        # feed / play / pet / bury / revive / ignore
+├── refresh.py      # scan → enrich → diff → emit news
+├── news.py         # stage / hunger transitions between scans
+├── history.py      # vitals_history sparkline rendering
+├── local_energy.py # default Energy proxy (no GitHub needed)
+├── config.py       # ~/.config/gitchi/config.toml
+├── github.py       # optional GitHub enrichment
+├── claude.py       # optional commit-mood sentiment
+└── cron.py         # launchd plist generator
 ```
 
 ## Configuration
@@ -186,7 +221,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: PedroCorreiaLuis/gitchi/.github/actions/check-pet@v0.4.0
+      - uses: PedroCorreiaLuis/gitchi/.github/actions/check-pet@v0.5.0
         with:
           hunger-threshold: 30
           health-threshold: 50
