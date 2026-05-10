@@ -37,8 +37,15 @@ runs:
   steps:
     - name: Install gitchi from PyPI
       shell: bash
+      # Pinned to the same release as the action itself. Bumping the action's
+      # version requires bumping this pin too — covered in CONTRIBUTING's
+      # "Releases" section. An unpinned install would couple every caller's
+      # CI to whatever the latest PyPI release is, which is bad on two axes:
+      # (a) a breaking gitchi release would silently break consumers tagged
+      # at an older action version, and (b) a compromised PyPI release would
+      # run unverified code on every caller's runner.
       run: |
-        pip install --quiet gitchi
+        pip install --quiet "gitchi==0.4.0"
 
     - name: Compute pet vitals and decide whether to comment
       id: check

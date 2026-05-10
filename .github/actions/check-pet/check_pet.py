@@ -176,11 +176,21 @@ def _find_existing_comment_id(marker: str) -> str | None:
 
 
 def _write_output(path: Path, values: dict[str, str]) -> None:
-    """Append `key=value` (or `key<<HEREDOC` for multi-line) to $GITHUB_OUTPUT."""
+    """Append `key=value` (or `key<<HEREDOC` for multi-line) to $GITHUB_OUTPUT.
+
+    The heredoc delimiter is randomised per invocation: a hardcoded string
+    like `GITCHI_EOF` would let any line in the value that happened to be
+    exactly that string terminate the heredoc early, dropping the rest of
+    the body and giving downstream code a way to inject extra `key=value`
+    pairs into `$GITHUB_OUTPUT`. Using a random delimiter eliminates that
+    class of bug — it's the same pattern GitHub's own actions/toolkit uses.
+    """
+    import uuid  # noqa: PLC0415  (local import keeps the global namespace small)
+
     lines: list[str] = []
     for key, value in values.items():
         if "\n" in value:
-            delim = "GITCHI_EOF"
+            delim = f"GITCHI_EOF_{uuid.uuid4().hex}"
             lines.append(f"{key}<<{delim}")
             lines.append(value)
             lines.append(delim)
