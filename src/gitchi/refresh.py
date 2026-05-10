@@ -26,6 +26,7 @@ from . import config as config_mod
 from . import github as github_mod
 from . import local_energy as local_energy_mod
 from . import news as news_mod
+from . import rarity as rarity_mod
 from . import species as species_mod
 from . import stats as stats_mod
 from .models import Config, NewsEvent, Pet, Stage, VitalsSnapshot
@@ -99,8 +100,10 @@ def refresh(cfg: Config | None = None) -> RefreshSummary:
             if stage is Stage.GHOST:
                 ghosts += 1
 
-            upsert_vitals(conn, repo.path, vitals, stage, species)
-            append_vitals_history(conn, repo.path, vitals, stage, species)
+            rarity = rarity_mod.rarity_for(repo)
+
+            upsert_vitals(conn, repo.path, vitals, stage, species, rarity)
+            append_vitals_history(conn, repo.path, vitals, stage, species, rarity)
 
             after[str(repo.path)] = VitalsSnapshot(
                 repo_path=repo.path,

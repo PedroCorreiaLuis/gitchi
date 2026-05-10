@@ -15,6 +15,8 @@ from . import verbs as verbs_mod
 from .art import render
 from .history import sparkline
 from .models import Pet
+from .rarity import color_for as rarity_color_for
+from .rarity import emoji_for as rarity_emoji_for
 from .species import emoji_for
 from .store import all_pets, connect, find_repo_by_name, get_pet, vitals_history
 
@@ -100,6 +102,7 @@ def list_cmd(
     pets.sort(key=_sort_key(sort))
     table = Table(title=f"gitchi — {len(pets)} pets")
     table.add_column("name")
+    table.add_column("rarity")
     table.add_column("species")
     table.add_column("stage")
     table.add_column("hunger")
@@ -107,8 +110,13 @@ def list_cmd(
     table.add_column("mood")
     table.add_column("status")
     for pet in pets:
+        rarity_style = rarity_color_for(pet.rarity)
+        rarity_cell = (
+            f"[{rarity_style}]{rarity_emoji_for(pet.rarity)} {pet.rarity.value}[/{rarity_style}]"
+        )
         table.add_row(
             pet.repo.name,
+            rarity_cell,
             f"{emoji_for(pet.species)} {pet.species.value}",
             pet.stage.value,
             _bar(pet.vitals.hunger),
@@ -125,8 +133,13 @@ def show(name: str) -> None:
     pet = _resolve(name)
     if pet is None:
         raise typer.Exit(code=1)
+    rarity_style = rarity_color_for(pet.rarity)
+    rarity_tag = (
+        f"[{rarity_style}]{rarity_emoji_for(pet.rarity)} {pet.rarity.value}[/{rarity_style}]"
+    )
     console.print(
-        f"[bold]{pet.repo.name}[/bold]  {emoji_for(pet.species)} {pet.species.value} · {pet.stage.value}"
+        f"[bold]{pet.repo.name}[/bold]  {emoji_for(pet.species)} {pet.species.value} · "
+        f"{pet.stage.value} · {rarity_tag}"
     )
     console.print(f"[dim]{pet.repo.path}[/dim]\n")
     console.print(render(pet.species, pet.stage))
@@ -140,6 +153,7 @@ def show(name: str) -> None:
     table.add_row("energy", _bar(pet.vitals.energy), _sparkline_for(pet, "energy"))
     table.add_row("mood", _bar(pet.vitals.mood), _sparkline_for(pet, "mood"))
     table.add_row("age", f"{pet.vitals.age_days} days", "")
+    table.add_row("rarity", rarity_tag, "")
     table.add_row("status", pet.status_word, "")
     console.print(table)
 

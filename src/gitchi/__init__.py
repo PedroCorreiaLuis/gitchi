@@ -3,4 +3,4 @@
 from .models import Pet, Repo, Species, Stage, Vitals
 
 __all__ = ["Pet", "Repo", "Species", "Stage", "Vitals", "__version__"]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
