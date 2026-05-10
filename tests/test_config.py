@@ -39,3 +39,37 @@ def test_set_value_handles_dotted_keys() -> None:
     assert cfg.scan.paths == ["~/code", "~/projects"]
     config_mod.set_value(cfg, "claude.enabled", "true")
     assert cfg.claude.enabled is True
+
+
+def test_tui_config_roundtrip() -> None:
+    from gitchi.config import _from_dict, _to_dict
+    from gitchi.models import Config, TuiConfig
+
+    cfg = Config(tui=TuiConfig(theme="virtual-boy", animation=False))
+    roundtrip = _from_dict(_to_dict(cfg))
+    assert roundtrip.tui.theme == "virtual-boy"
+    assert roundtrip.tui.animation is False
+
+
+def test_tui_config_defaults_when_missing() -> None:
+    from gitchi.config import _from_dict
+
+    cfg = _from_dict({})
+    assert cfg.tui.theme == "gameboy-green"
+    assert cfg.tui.animation is True
+
+
+def test_tui_set_value_theme() -> None:
+    from gitchi.config import set_value
+    from gitchi.models import Config
+
+    cfg = set_value(Config(), "tui.theme", "cozy")
+    assert cfg.tui.theme == "cozy"
+
+
+def test_tui_set_value_animation_truthy() -> None:
+    from gitchi.config import set_value
+    from gitchi.models import Config
+
+    assert set_value(Config(), "tui.animation", "false").tui.animation is False
+    assert set_value(Config(), "tui.animation", "true").tui.animation is True

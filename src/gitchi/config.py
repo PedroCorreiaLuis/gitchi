@@ -9,7 +9,7 @@ from typing import Any
 import tomli_w
 from platformdirs import user_config_dir, user_data_dir
 
-from .models import ClaudeConfig, Config, GitHubConfig, ScanConfig, StatsConfig
+from .models import ClaudeConfig, Config, GitHubConfig, ScanConfig, StatsConfig, TuiConfig
 
 APP_NAME = "gitchi"
 
@@ -58,6 +58,7 @@ def _from_dict(raw: dict[str, Any]) -> Config:
     stats_raw = raw.get("stats", {}) or {}
     claude_raw = raw.get("claude", {}) or {}
     github_raw = raw.get("github", {}) or {}
+    tui_raw = raw.get("tui", {}) or {}
 
     weights = stats_raw.get("weights", {}) or {}
 
@@ -83,6 +84,10 @@ def _from_dict(raw: dict[str, Any]) -> Config:
         ),
         github=GitHubConfig(
             enabled=bool(github_raw.get("enabled", False)),
+        ),
+        tui=TuiConfig(
+            theme=str(tui_raw.get("theme", TuiConfig().theme)),
+            animation=bool(tui_raw.get("animation", TuiConfig().animation)),
         ),
     )
 
@@ -110,6 +115,10 @@ def _to_dict(cfg: Config) -> dict[str, Any]:
         },
         "github": {
             "enabled": cfg.github.enabled,
+        },
+        "tui": {
+            "theme": cfg.tui.theme,
+            "animation": cfg.tui.animation,
         },
     }
 
@@ -147,6 +156,13 @@ def set_value(cfg: Config, dotted_key: str, value: str) -> Config:
     elif section == "github":
         if key == "enabled":
             cfg.github.enabled = value.lower() in {"1", "true", "yes", "on"}
+        else:
+            raise KeyError(key)
+    elif section == "tui":
+        if key == "theme":
+            cfg.tui.theme = value
+        elif key == "animation":
+            cfg.tui.animation = value.lower() in {"1", "true", "yes", "on"}
         else:
             raise KeyError(key)
     else:
