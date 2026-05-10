@@ -33,3 +33,25 @@ def test_dashboard_launch_argv_quotes_executable_with_spaces(monkeypatch) -> Non
     script = argv[2]
     # Single-quoted by shlex; the literal `pedro alpha` substring must appear.
     assert "'/Users/pedro alpha/.venv/bin/python'" in script
+
+
+def test_dashboard_launch_argv_handles_apostrophe_in_path(monkeypatch) -> None:
+    """A path with an apostrophe (e.g. username 'o brien') must not break the AppleScript literal.
+
+    ``shlex.quote`` represents apostrophes as ``'\"'\"'`` — the literal ``\"`` chars
+    would otherwise terminate the surrounding AppleScript double-quoted string
+    early and cause `osascript` to syntax-error. The helper must escape those.
+    """
+    monkeypatch.setattr("tama.menubar.sys.executable", "/Users/o'brien/.venv/bin/python")
+    argv = _dashboard_launch_argv()
+    script = argv[2]
+    # The unescaped sequence `'"'"'` must NOT appear — the `"` chars should be
+    # backslash-escaped for the AppleScript string layer.
+    assert "'\"'\"'" not in script
+    assert "'\\\"'\\\"'" in script
+    # The full AppleScript still wraps the command in unescaped double-quotes
+    # exactly twice (one open, one close).
+    unescaped_quotes = sum(
+        1 for i, ch in enumerate(script) if ch == '"' and (i == 0 or script[i - 1] != "\\")
+    )
+    assert unescaped_quotes == 4  # `"Terminal"` and `"<cmd>"` boundaries

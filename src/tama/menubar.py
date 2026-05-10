@@ -30,12 +30,20 @@ def _dashboard_launch_argv() -> list[str]:
 
     `open -a Terminal tama` would tell macOS to open a *file* named "tama"; to
     actually run the CLI we use ``osascript`` to drive Terminal.app's
-    ``do script`` directly. We invoke `sys.executable -m tama` so the new
+    ``do script`` directly. We invoke ``sys.executable -m tama`` so the new
     shell hits the same Python the menu-bar process is using, rather than
     relying on PATH lookup in the user's default login shell.
+
+    The command string traverses two escaping layers — first a shell layer
+    (``shlex.quote``) and then an AppleScript string-literal layer (the
+    ``"..."`` of ``do script``). ``shlex.quote`` emits literal ``"`` chars
+    whenever the input contains a single-quote (e.g. a username like
+    ``o'brien``), so we must additionally escape ``\\`` and ``"`` for the
+    AppleScript layer.
     """
     cmd = f"{shlex.quote(sys.executable)} -m tama"
-    script = f'tell application "Terminal" to do script "{cmd}"'
+    cmd_for_applescript = cmd.replace("\\", "\\\\").replace('"', '\\"')
+    script = f'tell application "Terminal" to do script "{cmd_for_applescript}"'
     return ["osascript", "-e", script]
 
 
