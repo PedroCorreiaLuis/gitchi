@@ -167,6 +167,14 @@ class TamaApp(App[None]):
         self.notify(f"rescanned {summary.scanned} repos · {summary.ghosts} ghosts{suffix}")
 
     def action_feed(self) -> None:
+        """Find a stale TODO and surface it as a notification.
+
+        We deliberately do NOT auto-open `$EDITOR` from the TUI keybind — the
+        TUI already has a dedicated `e` action for that, and silently spawning
+        an editor on every `f` keypress (potentially failing with rc=127 when
+        no editor is configured) is surprising. Press `f` to surface the TODO,
+        then `e` if you want to jump to it.
+        """
         pet = self._selected()
         if pet is None:
             return
@@ -175,7 +183,6 @@ class TamaApp(App[None]):
             self.notify(f"{pet.repo.name} purrs. no TODOs found.")
         else:
             self.notify(f"{pet.repo.name}: {hit.file.name}:{hit.line} — {hit.message[:60]}")
-            verbs_mod.pet(pet.repo.path, file=hit.file, line=hit.line)
 
     def action_play(self) -> None:
         pet = self._selected()

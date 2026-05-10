@@ -35,6 +35,7 @@ from .store import (
     append_news_events,
     append_vitals_history,
     connect,
+    currently_ignored_paths,
     recent_news,
     repo_name_map,
     snapshot_current_vitals,
@@ -110,7 +111,12 @@ def refresh(cfg: Config | None = None) -> RefreshSummary:
                 mood=vitals.mood,
             )
 
-        events = news_mod.diff_snapshots(before, after, name_for=repo_name_map(conn))
+        ignored = currently_ignored_paths(conn)
+        raw_events = news_mod.diff_snapshots(before, after, name_for=repo_name_map(conn))
+        # The `tama ignore` docstring promises ignored repos stay out of the
+        # news feed too — not just `tama list`. Filter them out here so the
+        # promise is implementation-true.
+        events = [e for e in raw_events if str(e.repo_path) not in ignored]
         append_news_events(conn, events)
 
     return RefreshSummary(

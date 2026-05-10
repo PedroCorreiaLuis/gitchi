@@ -334,6 +334,17 @@ def is_ignored(conn: sqlite3.Connection, repo_path: Path) -> bool:
     return row is not None
 
 
+def currently_ignored_paths(conn: sqlite3.Connection) -> set[str]:
+    """Return the set of currently-ignored repo paths (as path strings).
+
+    Used by the refresh orchestrator to filter ignored repos out of the news
+    events stream — the `tama ignore` docstring promises this and `all_pets`
+    alone only filters the list view, not the news feed.
+    """
+    rows = conn.execute("SELECT repo_path FROM ignore_state").fetchall()
+    return {row["repo_path"] for row in rows}
+
+
 # ---------------------------------------------------------------------------
 # news_events
 # ---------------------------------------------------------------------------

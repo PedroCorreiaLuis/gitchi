@@ -66,6 +66,35 @@ def test_second_refresh_with_no_change_emits_no_news(
     assert second.news_events == []
 
 
+def test_ignored_repo_does_not_emit_news_events(tmp_path: Path, monkeypatch, make_repo) -> None:
+    """Regression for the `tama ignore` docstring promise — ignored repos must
+    not surface news events even when they would otherwise (e.g. hatched).
+    """
+    from tama.store import connect, ignore
+
+    db = tmp_path / "tama.db"
+    monkeypatch.setattr(config_mod, "db_path", lambda: db)
+    monkeypatch.setattr(config_mod, "data_dir", lambda: tmp_path)
+
+    alpha = make_repo("alpha", files={"main.py": "x = 1\n"}, commits=1)
+    make_repo("beta", files={"main.py": "y = 1\n"}, commits=1)
+
+    cfg = Config()
+    cfg.scan.paths = [str(tmp_path)]
+    cfg.scan.depth = 2
+
+    # Bootstrap so the repos exist in the DB before we ignore alpha.
+    refresh_mod.refresh(cfg)
+    with connect() as conn:
+        ignore(conn, alpha, "test")
+
+    # Next refresh should NOT emit any events for the ignored repo (alpha).
+    second = refresh_mod.refresh(cfg)
+    assert all(e.repo_path != alpha for e in second.news_events), (
+        "ignored repo leaked into news events"
+    )
+
+
 def test_refresh_writes_to_vitals_history(tmp_path: Path, monkeypatch, make_repo) -> None:
     """Each refresh should append exactly one history row per repo."""
     db = tmp_path / "tama.db"
