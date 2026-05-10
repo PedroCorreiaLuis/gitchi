@@ -123,3 +123,40 @@ def test_connect_closes_connection_on_exit(tmp_path: Path) -> None:
 
     with pytest.raises(sqlite3.ProgrammingError):
         held.execute("SELECT 1")
+
+
+def test_recent_news_preserves_insertion_order_within_a_batch(tmp_path: Path) -> None:
+    """Regression: events appended together in priority order must come out in that order.
+
+    All events in a single refresh share the same `created_at`. If `recent_news`
+    used `id DESC` as the tiebreak, events would surface in REVERSE insertion
+    order — contradicting `news.py`'s documented priority order (stage events
+    before hunger events).
+    """
+    from tama.models import NewsEvent
+    from tama.store import append_news_events, recent_news
+
+    db = tmp_path / "ordering.db"
+    events = [
+        NewsEvent(
+            repo_path=Path("/r/a"),
+            repo_name="a",
+            event_type="evolved",
+            from_value="baby",
+            to_value="teen",
+            detail="evolved: baby → teen",
+        ),
+        NewsEvent(
+            repo_path=Path("/r/a"),
+            repo_name="a",
+            event_type="became_hungry",
+            from_value="60",
+            to_value="10",
+            detail="is hungry (hunger 60 → 10)",
+        ),
+    ]
+    with connect(db) as conn:
+        append_news_events(conn, events)
+        recent = recent_news(conn, limit=10)
+    # Newest batch first; within the batch, stage event before hunger event.
+    assert [e.event_type for e in recent] == ["evolved", "became_hungry"]

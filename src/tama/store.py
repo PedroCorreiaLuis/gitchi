@@ -385,7 +385,12 @@ def recent_news(
             SELECT n.*, r.name AS repo_name
             FROM news_events n
             LEFT JOIN repos r ON r.path = n.repo_path
-            ORDER BY n.created_at DESC, n.id DESC
+            -- Within one refresh every event shares the same `created_at` (one
+-- `_now_epoch()` per batch), so we tiebreak with `id ASC` to preserve
+-- the insertion order the `news` module uses for priority. `id DESC`
+-- would invert that order and make hunger events surface before stage
+-- transitions, contradicting the news.py module docstring.
+ORDER BY n.created_at DESC, n.id ASC
             LIMIT ?
             """,
             (limit,),
@@ -397,7 +402,12 @@ def recent_news(
             FROM news_events n
             LEFT JOIN repos r ON r.path = n.repo_path
             WHERE n.repo_path = ?
-            ORDER BY n.created_at DESC, n.id DESC
+            -- Within one refresh every event shares the same `created_at` (one
+-- `_now_epoch()` per batch), so we tiebreak with `id ASC` to preserve
+-- the insertion order the `news` module uses for priority. `id DESC`
+-- would invert that order and make hunger events surface before stage
+-- transitions, contradicting the news.py module docstring.
+ORDER BY n.created_at DESC, n.id ASC
             LIMIT ?
             """,
             (str(repo_path), limit),
