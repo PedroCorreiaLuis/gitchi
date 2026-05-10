@@ -1,7 +1,15 @@
 # gitchi — design spec
 
 **Date:** 2026-05-10
-**Status:** v0.1.0 — initial implementation
+**Status:** v0.5.0 — shipped through Wave 4
+
+This is the historical design document that anchored the v0.1.0 build.
+Subsequent waves (v0.2 dashboard depth, v0.3 PyPI publishing + rename
+from `tama`, v0.4 check-pet action, v0.5 rarities) extended the design
+but didn't invalidate it. For the current behavior, treat the README and
+`CHANGELOG.md` as authoritative — they reflect what actually shipped.
+For the historical reasoning behind the initial architecture, keep
+reading.
 
 ## Concept
 
