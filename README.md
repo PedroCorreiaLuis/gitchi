@@ -40,7 +40,7 @@ pip install tama
 # from source
 git clone https://github.com/PedroCorreiaLuis/tama
 cd tama
-uv pip install -e ".[menubar,dev]"   # `menubar` is macOS-only
+uv sync --extra menubar --extra dev   # `menubar` is macOS-only; drop it on Linux
 ```
 
 ## Quick start
