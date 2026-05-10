@@ -13,9 +13,10 @@ from . import cron as cron_mod
 from . import refresh as refresh_mod
 from . import verbs as verbs_mod
 from .art import render
+from .history import sparkline
 from .models import Pet
 from .species import emoji_for
-from .store import all_pets, connect, find_repo_by_name, get_pet
+from .store import all_pets, connect, find_repo_by_name, get_pet, vitals_history
 
 app = typer.Typer(
     name="tama",
@@ -59,17 +60,40 @@ def refresh() -> None:
         f"[bold]Scanned[/bold] {summary.scanned} repos · "
         f"[bold]ghosts[/bold] {summary.ghosts} · "
         f"github={summary.enriched_with_github} · "
+        f"local_energy={summary.enriched_with_local_energy} · "
         f"claude={summary.enriched_with_claude}"
     )
+    if summary.news_events:
+        console.print()
+        console.print("[bold]news[/bold]")
+        for event in summary.news_events:
+            console.print(f"  {event.headline}")
+
+
+@app.command()
+def news(limit: int = typer.Option(20, help="how many recent events to show")) -> None:
+    """Print the most recent state-change events across the pet zoo."""
+    events = refresh_mod.list_recent_news(limit=limit)
+    if not events:
+        console.print(
+            "[yellow]No news yet. Run [bold]tama refresh[/bold] a few times "
+            "and we'll have something to report.[/yellow]"
+        )
+        return
+    for event in events:
+        console.print(event.headline)
 
 
 @app.command(name="list")
 def list_cmd(
     sort: str = typer.Option("hunger", help="hunger | health | mood | age | name"),
+    show_ignored: bool = typer.Option(
+        False, "--all", help="include pets you've explicitly `tama ignore`d"
+    ),
 ) -> None:
     """List all pets in a sortable table."""
     with connect() as conn:
-        pets = all_pets(conn)
+        pets = all_pets(conn, include_ignored=show_ignored)
     if not pets:
         console.print("[yellow]No pets yet. Run [bold]tama refresh[/bold] first.[/yellow]")
         return
@@ -110,18 +134,26 @@ def show(name: str) -> None:
     table = Table(show_header=False, box=None)
     table.add_column()
     table.add_column()
-    table.add_row("hunger", _bar(pet.vitals.hunger))
-    table.add_row("health", _bar(pet.vitals.health))
-    table.add_row("energy", _bar(pet.vitals.energy))
-    table.add_row("mood", _bar(pet.vitals.mood))
-    table.add_row("age", f"{pet.vitals.age_days} days")
-    table.add_row("status", pet.status_word)
+    table.add_column()
+    table.add_row("hunger", _bar(pet.vitals.hunger), _sparkline_for(pet, "hunger"))
+    table.add_row("health", _bar(pet.vitals.health), _sparkline_for(pet, "health"))
+    table.add_row("energy", _bar(pet.vitals.energy), _sparkline_for(pet, "energy"))
+    table.add_row("mood", _bar(pet.vitals.mood), _sparkline_for(pet, "mood"))
+    table.add_row("age", f"{pet.vitals.age_days} days", "")
+    table.add_row("status", pet.status_word, "")
     console.print(table)
 
 
 @app.command()
-def feed(name: str) -> None:
-    """Find one stale TODO/FIXME in the repo and print it. The pet looks expectant."""
+def feed(
+    name: str,
+    open_editor: bool = typer.Option(
+        True,
+        "--open/--no-open",
+        help="open $EDITOR at the TODO's file:line when a TODO is found",
+    ),
+) -> None:
+    """Find one stale TODO/FIXME and (by default) jump $EDITOR straight to it."""
     pet = _resolve(name)
     if pet is None:
         raise typer.Exit(code=1)
@@ -131,6 +163,10 @@ def feed(name: str) -> None:
         return
     console.print(f"[bold]{pet.repo.name}[/bold] is hungry. It says:")
     console.print(f"  [yellow]{hit.file}:{hit.line}[/yellow]  {hit.message}")
+    if open_editor:
+        rc = verbs_mod.pet(pet.repo.path, file=hit.file, line=hit.line)
+        if rc == 127:
+            console.print("[dim](no $EDITOR set and no fallback found — skipping open)[/dim]")
 
 
 @app.command()
@@ -189,6 +225,34 @@ def revive(name: str) -> None:
         raise typer.Exit(code=1)
     verbs_mod.revive(pet.repo.path)
     console.print(f"[green]{pet.repo.name} stirs.[/green]")
+
+
+@app.command()
+def ignore(
+    name: str,
+    reason: str = typer.Option("", help="optional note: why this repo doesn't belong"),
+) -> None:
+    """Hide a pet from `tama list` and the news feed.
+
+    Use this for repos you don't actually maintain (vendored forks, clones you
+    inherited). Different from `bury` — burying is for projects that died with
+    dignity. Ignored pets are still in the DB and reappear with `tama list --all`.
+    """
+    pet = _resolve(name)
+    if pet is None:
+        raise typer.Exit(code=1)
+    verbs_mod.ignore(pet.repo.path, reason or None)
+    console.print(f"[dim]{pet.repo.name} ignored.[/dim] {reason}")
+
+
+@app.command()
+def unignore(name: str) -> None:
+    """Bring a previously ignored pet back into the dashboard."""
+    pet = _resolve(name)
+    if pet is None:
+        raise typer.Exit(code=1)
+    verbs_mod.unignore(pet.repo.path)
+    console.print(f"[green]{pet.repo.name} is visible again.[/green]")
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +368,16 @@ def _sort_key(field: str):  # type: ignore[no-untyped-def]
 def _bar(value: int, width: int = 10) -> str:
     filled = max(0, min(width, round(value / 100 * width)))
     return f"[{'█' * filled}{'░' * (width - filled)}] {value:3d}"
+
+
+def _sparkline_for(pet: Pet, field: str, *, width: int = 20) -> str:
+    """Render a Unicode sparkline for one vital across the pet's recent history."""
+    with connect() as conn:
+        history = vitals_history(conn, pet.repo.path, limit=width)
+    if not history:
+        return ""
+    series = [getattr(v, field) for v in history]
+    return sparkline(series, width=width)
 
 
 if __name__ == "__main__":

@@ -62,6 +62,7 @@ class Pet:
     vitals: Vitals
     buried: bool = False
     bury_reason: str | None = None
+    ignored: bool = False
 
     @property
     def display_name(self) -> str:
@@ -69,6 +70,8 @@ class Pet:
 
     @property
     def status_word(self) -> str:
+        if self.ignored:
+            return "ignored"
         if self.buried:
             return "buried"
         if self.stage is Stage.GHOST:
@@ -83,6 +86,63 @@ class Pet:
         if score >= 20:
             return "hungry"
         return "starving"
+
+
+@dataclass(frozen=True, slots=True)
+class LocalEnergySignals:
+    """Local-only signals used to compute Energy when GitHub enrichment is off.
+
+    Each field is a small integer count derived from a single `git` invocation.
+    The combiner in stats.py turns these into a 0-100 Energy score.
+    """
+
+    uncommitted_files: int  # `git status --porcelain` line count
+    stale_local_branches: int  # local branches >30d old that aren't the default
+    untracked_dirs: int  # untracked top-level dirs (work hanging around)
+
+
+@dataclass(frozen=True, slots=True)
+class VitalsSnapshot:
+    """A point-in-time snapshot of a pet's stage + key vitals.
+
+    Used by `news.diff_snapshots` to compute the events between two scans.
+    """
+
+    repo_path: Path
+    stage: Stage
+    hunger: int
+    health: int
+    energy: int
+    mood: int
+
+
+@dataclass(frozen=True, slots=True)
+class NewsEvent:
+    """A single notable transition observed between two scans."""
+
+    repo_path: Path
+    repo_name: str
+    event_type: str  # 'evolved', 'hatched', 'became_hungry', 'became_ghost',
+    # 'revived', 'recovered_from_hunger'
+    from_value: str | None
+    to_value: str | None
+    detail: str  # human-readable summary used by `tama news` and refresh output
+
+    @property
+    def headline(self) -> str:
+        """Pre-formatted single-line headline like '✨ coldpipe evolved: baby → teen'."""
+        icon = _EVENT_ICONS.get(self.event_type, "·")
+        return f"{icon} {self.repo_name} {self.detail}"
+
+
+_EVENT_ICONS: dict[str, str] = {
+    "evolved": "✨",
+    "hatched": "🥚",
+    "became_hungry": "🍽",
+    "became_ghost": "👻",
+    "revived": "💫",
+    "recovered_from_hunger": "🌱",
+}
 
 
 @dataclass(slots=True)

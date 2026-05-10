@@ -3,6 +3,7 @@
 Layout:
 - Header: project title + counts
 - Main: DataTable on the left, Detail panel on the right
+- News panel below the DataTable showing the most recent state transitions
 - Footer: keybindings
 """
 
@@ -16,8 +17,10 @@ from textual.widgets import DataTable, Footer, Header, Static
 from . import refresh as refresh_mod
 from . import verbs as verbs_mod
 from .art import render
-from .models import Pet, Stage
+from .models import NewsEvent, Pet, Stage
 from .species import emoji_for
+
+NEWS_PANEL_LIMIT = 6
 
 
 def _bar(value: int, width: int = 12) -> str:
@@ -46,10 +49,25 @@ class DetailPanel(Static):
             f"age   {pet.vitals.age_days} days",
             f"state {pet.status_word}",
         ]
-        if pet.buried:
+        if pet.ignored:
+            lines.append("[dim italic]ignored[/dim italic]")
+        elif pet.buried:
             lines.append(
                 "[dim italic]buried · " + (pet.bury_reason or "at peace") + "[/dim italic]"
             )
+        self.update("\n".join(lines))
+
+
+class NewsPanel(Static):
+    """Footer-area panel showing the latest state-change events."""
+
+    def show_events(self, events: list[NewsEvent]) -> None:
+        if not events:
+            self.update("[dim]news: (rescan to start tracking)[/dim]")
+            return
+        lines = ["[bold]news[/bold]"]
+        for event in events[:NEWS_PANEL_LIMIT]:
+            lines.append(f"  {event.headline}")
         self.update("\n".join(lines))
 
 
@@ -63,6 +81,13 @@ class TamaApp(App[None]):
         padding: 1 2;
         border: round $primary;
     }
+    NewsPanel {
+        height: auto;
+        max-height: 10;
+        padding: 0 2;
+        border-top: solid $primary;
+        color: $text;
+    }
     """
 
     BINDINGS = [
@@ -73,6 +98,8 @@ class TamaApp(App[None]):
         Binding("e", "pet", "edit"),
         Binding("b", "bury", "bury"),
         Binding("v", "revive", "revive"),
+        Binding("i", "ignore", "ignore"),
+        Binding("u", "unignore", "unignore"),
     ]
 
     def __init__(self) -> None:
@@ -87,6 +114,7 @@ class TamaApp(App[None]):
                 table.add_columns("name", "species", "stage", "hunger", "mood", "status")
                 yield table
             yield DetailPanel(id="detail")
+        yield NewsPanel(id="news")
         yield Footer()
 
     async def on_mount(self) -> None:
@@ -113,6 +141,7 @@ class TamaApp(App[None]):
             self._show_index(0)
         else:
             self.query_one(DetailPanel).show_pet(None)
+        self.query_one(NewsPanel).show_events(refresh_mod.list_recent_news(limit=NEWS_PANEL_LIMIT))
 
     def _show_index(self, index: int) -> None:
         if 0 <= index < len(self.pets):
@@ -132,7 +161,10 @@ class TamaApp(App[None]):
     def action_rescan(self) -> None:
         summary = refresh_mod.refresh()
         self._reload()
-        self.notify(f"rescanned {summary.scanned} repos · {summary.ghosts} ghosts")
+        suffix = ""
+        if summary.news_events:
+            suffix = f" · {len(summary.news_events)} news"
+        self.notify(f"rescanned {summary.scanned} repos · {summary.ghosts} ghosts{suffix}")
 
     def action_feed(self) -> None:
         pet = self._selected()
@@ -143,6 +175,7 @@ class TamaApp(App[None]):
             self.notify(f"{pet.repo.name} purrs. no TODOs found.")
         else:
             self.notify(f"{pet.repo.name}: {hit.file.name}:{hit.line} — {hit.message[:60]}")
+            verbs_mod.pet(pet.repo.path, file=hit.file, line=hit.line)
 
     def action_play(self) -> None:
         pet = self._selected()
@@ -155,7 +188,8 @@ class TamaApp(App[None]):
             self.notify(f"{pet.repo.name} bounces — tests passed")
         else:
             self.notify(
-                f"{pet.repo.name} sulks — tests failed (rc={result.returncode})", severity="warning"
+                f"{pet.repo.name} sulks — tests failed (rc={result.returncode})",
+                severity="warning",
             )
 
     def action_pet(self) -> None:
@@ -180,6 +214,22 @@ class TamaApp(App[None]):
         verbs_mod.revive(pet.repo.path)
         self._reload()
         self.notify(f"{pet.repo.name} stirs")
+
+    def action_ignore(self) -> None:
+        pet = self._selected()
+        if pet is None:
+            return
+        verbs_mod.ignore(pet.repo.path, None)
+        self._reload()
+        self.notify(f"{pet.repo.name} ignored (run `tama unignore` to reverse)")
+
+    def action_unignore(self) -> None:
+        pet = self._selected()
+        if pet is None:
+            return
+        verbs_mod.unignore(pet.repo.path)
+        self._reload()
+        self.notify(f"{pet.repo.name} is visible again")
 
 
 def run() -> None:
