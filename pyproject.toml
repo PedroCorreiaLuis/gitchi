@@ -1,6 +1,6 @@
 [project]
 name = "tama"
-version = "0.1.0"
+version = "0.1.1"
 description = "A virtual pet for every git repo. Your codebase as a tamagotchi."
 readme = "README.md"
 license = { file = "LICENSE" }
