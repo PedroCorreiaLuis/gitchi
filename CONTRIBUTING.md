@@ -45,3 +45,48 @@ maps correctly.
 
 We follow semver. The `v0.x` line may break TUI keybindings or stat formulas
 without a major bump.
+
+Releases are automated. Pushing a tag of the form `v<X>.<Y>.<Z>` triggers
+`.github/workflows/release.yml` which:
+
+1. Verifies the tag matches the version in `pyproject.toml`.
+2. Builds the wheel + sdist with `uv build`.
+3. Publishes to PyPI via [trusted publishing][trusted-pub] — no API token
+   needed; PyPI verifies the workflow's OIDC token instead.
+
+To cut a release:
+
+```bash
+# bump the version in pyproject.toml + src/tama/__init__.py + CHANGELOG.md
+# (we keep them in sync as a deliberate three-place edit so each can be
+# audited independently in PR review)
+
+git checkout -b chore/v<X>.<Y>.<Z>
+# ...edit, run tests...
+git push -u origin chore/v<X>.<Y>.<Z>
+gh pr create --fill
+gh pr merge --squash --delete-branch
+git pull
+git tag -a v<X>.<Y>.<Z> -m "v<X>.<Y>.<Z>"
+git push origin v<X>.<Y>.<Z>
+gh release create v<X>.<Y>.<Z> --generate-notes  # or write notes manually
+```
+
+The PyPI workflow runs automatically once the tag is pushed; the release
+URL appears in the workflow's deployment summary when it completes.
+
+### One-time PyPI setup (only needed before the first publish)
+
+Trusted publishing requires a one-time configuration on pypi.org:
+
+1. Log in to pypi.org → "Your projects" → "Manage" or "Publishing".
+2. Add a **pending publisher** (works even before the project exists):
+   - Project: `tama`
+   - Owner: `PedroCorreiaLuis`
+   - Repo: `tama`
+   - Workflow: `release.yml`
+   - Environment: `pypi`
+3. First tag push runs the workflow, claims the project name, and uploads
+   the artifact in one shot.
+
+[trusted-pub]: https://docs.pypi.org/trusted-publishers/

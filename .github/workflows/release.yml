@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Workflow-level permissions are minimum: `contents: read` covers the
+# `actions/checkout` step. The OIDC `id-token: write` grant needed for
+# trusted publishing is scoped to the `publish-pypi` job only — keeping
+# the build job from holding a token it never uses.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build wheel + sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Verify tag matches package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg_version="$(uv run --no-project python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")"
+          echo "tag=$tag pkg=$pkg_version"
+          if [ "$tag" != "$pkg_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match pyproject version $pkg_version"
+            exit 1
+          fi
+
+      - name: Build
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tama-dist-${{ github.ref_name }}
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Trusted publishing needs `id-token: write` so PyPI can verify the
+    # workflow's GitHub-issued OIDC token. Scoping it to this job (rather
+    # than workflow-level) keeps the build job from holding a token it
+    # has no use for.
+    permissions:
+      id-token: write
+      contents: read
+    # `environment: pypi` lets you scope the trusted publisher to this
+    # specific environment for an extra layer of protection. Match the value
+    # to the environment name you'll configure in the PyPI publisher entry.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tama/${{ github.ref_name }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tama-dist-${{ github.ref_name }}
+          path: dist/
+
+      - name: Publish to PyPI via trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # No `password:` here — pypa/gh-action-pypi-publish auto-detects the
+          # OIDC token via id-token: write and uses trusted publishing.
+          skip-existing: true
