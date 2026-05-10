@@ -13,7 +13,9 @@ from pathlib import Path
 from .config import db_path
 from .store import bury as _bury
 from .store import connect
+from .store import ignore as _ignore
 from .store import revive as _revive
+from .store import unignore as _unignore
 
 _TODO_RE = re.compile(r"\b(TODO|FIXME|XXX|HACK)\b[:\s](?P<msg>.+)$", re.IGNORECASE)
 _TEST_RUNNERS: list[tuple[str, list[str]]] = [
@@ -133,11 +135,22 @@ def detect_runner(repo_path: Path) -> list[str] | None:
     return None
 
 
-def pet(repo_path: Path) -> int:
+def pet(repo_path: Path, *, file: Path | None = None, line: int | None = None) -> int:
     """Open the repo in $EDITOR (or `cursor` / `code` / `vim` fallback).
 
-    `$EDITOR` is shell-tokenized so values like ``code --wait`` or
-    ``emacsclient -t`` work as expected.
+    When `file` and `line` are supplied the launcher targets that exact location
+    using the editor's "goto" convention. This is what `tama feed` uses to drop
+    you straight onto the stale TODO it just found.
+
+    Supported goto syntaxes:
+      cursor / code / windsurf:  `code --goto path:line`
+      subl:                       `subl path:line`
+      vim / nvim:                 `vim +line path`
+      emacs / emacsclient:        `emacs +line path`
+
+    Falls back to opening the repo (or file) without a line target if the editor
+    isn't recognised. `$EDITOR` is shell-tokenized so values like
+    ``code --wait`` or ``emacsclient -t`` work as expected.
     """
     editor = os.environ.get("EDITOR", "").strip()
     if editor:
@@ -150,8 +163,35 @@ def pet(repo_path: Path) -> int:
                 break
     if not argv:
         return 127
-    proc = subprocess.run([*argv, str(repo_path)], check=False)
+
+    target_args = _goto_argv(argv[0], repo_path, file, line)
+    proc = subprocess.run([*argv, *target_args], check=False)
     return proc.returncode
+
+
+def _goto_argv(
+    editor_binary: str,
+    repo_path: Path,
+    file: Path | None,
+    line: int | None,
+) -> list[str]:
+    """Build the argv tail that points the editor at file:line (when supplied)."""
+    if file is None or line is None:
+        return [str(repo_path)]
+
+    binary_name = Path(editor_binary).name.lower()
+    target = f"{file}:{line}"
+
+    if binary_name in {"code", "code-insiders", "cursor", "windsurf"}:
+        return ["--goto", target]
+    if binary_name in {"subl", "sublime_text"}:
+        return [target]
+    if binary_name in {"vim", "nvim", "vi", "mvim", "gvim"}:
+        return [f"+{line}", str(file)]
+    if binary_name in {"emacs", "emacsclient"}:
+        return [f"+{line}", str(file)]
+    # Unknown editor — fall back to opening the file (no line target).
+    return [str(file)]
 
 
 def bury(repo_path: Path, reason: str | None = None) -> None:
@@ -162,3 +202,19 @@ def bury(repo_path: Path, reason: str | None = None) -> None:
 def revive(repo_path: Path) -> None:
     with connect(db_path()) as conn:
         _revive(conn, repo_path)
+
+
+def ignore(repo_path: Path, reason: str | None = None) -> None:
+    """Hide a pet from `tama list` and from the news feed.
+
+    Different from `bury`: bury is for "this repo died with dignity", ignore is
+    for "this is a vendored fork I never wrote / a clone I don't maintain /
+    a directory tama shouldn't be tracking at all".
+    """
+    with connect(db_path()) as conn:
+        _ignore(conn, repo_path, reason)
+
+
+def unignore(repo_path: Path) -> None:
+    with connect(db_path()) as conn:
+        _unignore(conn, repo_path)

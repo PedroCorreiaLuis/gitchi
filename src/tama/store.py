@@ -16,7 +16,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from .config import db_path
-from .models import Pet, Repo, Species, Stage, Vitals
+from .models import NewsEvent, Pet, Repo, Species, Stage, Vitals, VitalsSnapshot
 
 
 @contextmanager
@@ -188,57 +188,42 @@ def upsert_vitals(
     )
 
 
-def all_pets(conn: sqlite3.Connection) -> list[Pet]:
-    rows = conn.execute(
-        """
-        SELECT r.*, v.hunger, v.health, v.energy, v.mood, v.age_days, v.stage, v.species,
-               b.buried_at, b.reason AS bury_reason
-        FROM repos r
-        LEFT JOIN vitals_cache v ON v.repo_path = r.path
-        LEFT JOIN bury_state b ON b.repo_path = r.path
-        ORDER BY r.path
-        """
-    ).fetchall()
+_PETS_SELECT = """
+    SELECT r.*, v.hunger, v.health, v.energy, v.mood, v.age_days, v.stage, v.species,
+           b.buried_at, b.reason AS bury_reason,
+           i.ignored_at
+    FROM repos r
+    LEFT JOIN vitals_cache v ON v.repo_path = r.path
+    LEFT JOIN bury_state b ON b.repo_path = r.path
+    LEFT JOIN ignore_state i ON i.repo_path = r.path
+"""
+
+
+def all_pets(conn: sqlite3.Connection, *, include_ignored: bool = False) -> list[Pet]:
+    """Return every pet with cached vitals.
+
+    Ignored pets are filtered out by default — `include_ignored=True` for the
+    `tama list --all` view that surfaces them.
+    """
+    rows = conn.execute(_PETS_SELECT + " ORDER BY r.path").fetchall()
     pets: list[Pet] = []
     for row in rows:
         if row["hunger"] is None:
             continue  # no vitals yet
-        repo = _row_to_repo(row)
-        vitals = Vitals(
-            hunger=row["hunger"],
-            health=row["health"],
-            energy=row["energy"],
-            mood=row["mood"],
-            age_days=row["age_days"],
-        )
-        pets.append(
-            Pet(
-                repo=repo,
-                species=Species(row["species"]),
-                stage=Stage(row["stage"]),
-                vitals=vitals,
-                buried=row["buried_at"] is not None,
-                bury_reason=row["bury_reason"],
-            )
-        )
+        if row["ignored_at"] is not None and not include_ignored:
+            continue
+        pets.append(_row_to_pet(row))
     return pets
 
 
 def get_pet(conn: sqlite3.Connection, repo_path: Path) -> Pet | None:
-    rows = conn.execute(
-        """
-        SELECT r.*, v.hunger, v.health, v.energy, v.mood, v.age_days, v.stage, v.species,
-               b.buried_at, b.reason AS bury_reason
-        FROM repos r
-        LEFT JOIN vitals_cache v ON v.repo_path = r.path
-        LEFT JOIN bury_state b ON b.repo_path = r.path
-        WHERE r.path = ?
-        """,
-        (str(repo_path),),
-    ).fetchall()
+    rows = conn.execute(_PETS_SELECT + " WHERE r.path = ?", (str(repo_path),)).fetchall()
     if not rows or rows[0]["hunger"] is None:
         return None
-    row = rows[0]
+    return _row_to_pet(rows[0])
+
+
+def _row_to_pet(row: sqlite3.Row) -> Pet:
     repo = _row_to_repo(row)
     vitals = Vitals(
         hunger=row["hunger"],
@@ -254,6 +239,7 @@ def get_pet(conn: sqlite3.Connection, repo_path: Path) -> Pet | None:
         vitals=vitals,
         buried=row["buried_at"] is not None,
         bury_reason=row["bury_reason"],
+        ignored=row["ignored_at"] is not None,
     )
 
 
@@ -318,3 +304,214 @@ def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
         "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         (key, value),
     )
+
+
+# ---------------------------------------------------------------------------
+# ignore_state — pets the user has explicitly removed from the dashboard
+# ---------------------------------------------------------------------------
+
+
+def ignore(conn: sqlite3.Connection, repo_path: Path, reason: str | None = None) -> None:
+    conn.execute(
+        """
+        INSERT INTO ignore_state (repo_path, ignored_at, reason) VALUES (?, ?, ?)
+        ON CONFLICT(repo_path) DO UPDATE SET
+            ignored_at = excluded.ignored_at,
+            reason = excluded.reason
+        """,
+        (str(repo_path), _now_epoch(), reason),
+    )
+
+
+def unignore(conn: sqlite3.Connection, repo_path: Path) -> None:
+    conn.execute("DELETE FROM ignore_state WHERE repo_path = ?", (str(repo_path),))
+
+
+def is_ignored(conn: sqlite3.Connection, repo_path: Path) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM ignore_state WHERE repo_path = ?", (str(repo_path),)
+    ).fetchone()
+    return row is not None
+
+
+def currently_ignored_paths(conn: sqlite3.Connection) -> set[str]:
+    """Return the set of currently-ignored repo paths (as path strings).
+
+    Used by the refresh orchestrator to filter ignored repos out of the news
+    events stream — the `tama ignore` docstring promises this and `all_pets`
+    alone only filters the list view, not the news feed.
+    """
+    rows = conn.execute("SELECT repo_path FROM ignore_state").fetchall()
+    return {row["repo_path"] for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# news_events
+# ---------------------------------------------------------------------------
+
+
+def append_news_events(conn: sqlite3.Connection, events: list[NewsEvent]) -> None:
+    if not events:
+        return
+    now = _now_epoch()
+    conn.executemany(
+        """
+        INSERT INTO news_events (repo_path, event_type, from_value, to_value, detail, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                str(e.repo_path),
+                e.event_type,
+                e.from_value,
+                e.to_value,
+                e.detail,
+                now,
+            )
+            for e in events
+        ],
+    )
+
+
+def recent_news(
+    conn: sqlite3.Connection,
+    *,
+    limit: int = 20,
+    repo_path: Path | None = None,
+) -> list[NewsEvent]:
+    if repo_path is None:
+        rows = conn.execute(
+            """
+            SELECT n.*, r.name AS repo_name
+            FROM news_events n
+            LEFT JOIN repos r ON r.path = n.repo_path
+            -- Within one refresh every event shares the same `created_at` (one
+-- `_now_epoch()` per batch), so we tiebreak with `id ASC` to preserve
+-- the insertion order the `news` module uses for priority. `id DESC`
+-- would invert that order and make hunger events surface before stage
+-- transitions, contradicting the news.py module docstring.
+ORDER BY n.created_at DESC, n.id ASC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT n.*, r.name AS repo_name
+            FROM news_events n
+            LEFT JOIN repos r ON r.path = n.repo_path
+            WHERE n.repo_path = ?
+            -- Within one refresh every event shares the same `created_at` (one
+-- `_now_epoch()` per batch), so we tiebreak with `id ASC` to preserve
+-- the insertion order the `news` module uses for priority. `id DESC`
+-- would invert that order and make hunger events surface before stage
+-- transitions, contradicting the news.py module docstring.
+ORDER BY n.created_at DESC, n.id ASC
+            LIMIT ?
+            """,
+            (str(repo_path), limit),
+        ).fetchall()
+    out: list[NewsEvent] = []
+    for row in rows:
+        out.append(
+            NewsEvent(
+                repo_path=Path(row["repo_path"]),
+                repo_name=row["repo_name"] or _basename(row["repo_path"]),
+                event_type=row["event_type"],
+                from_value=row["from_value"],
+                to_value=row["to_value"],
+                detail=row["detail"],
+            )
+        )
+    return out
+
+
+def _basename(path: str) -> str:
+    return path.rsplit("/", 1)[-1] or path
+
+
+# ---------------------------------------------------------------------------
+# vitals_history — point-in-time snapshots for sparklines
+# ---------------------------------------------------------------------------
+
+
+def append_vitals_history(
+    conn: sqlite3.Connection,
+    repo_path: Path,
+    vitals: Vitals,
+    stage: Stage,
+    species: Species,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO vitals_history (repo_path, hunger, health, energy, mood, age_days,
+                                    stage, species, recorded_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(repo_path),
+            vitals.hunger,
+            vitals.health,
+            vitals.energy,
+            vitals.mood,
+            vitals.age_days,
+            stage.value,
+            species.value,
+            _now_epoch(),
+        ),
+    )
+
+
+def vitals_history(conn: sqlite3.Connection, repo_path: Path, *, limit: int = 20) -> list[Vitals]:
+    """Return the most recent `limit` Vitals records for a repo, OLDEST first."""
+    rows = conn.execute(
+        """
+        SELECT hunger, health, energy, mood, age_days
+        FROM vitals_history
+        WHERE repo_path = ?
+        ORDER BY recorded_at DESC
+        LIMIT ?
+        """,
+        (str(repo_path), limit),
+    ).fetchall()
+    return [
+        Vitals(
+            hunger=r["hunger"],
+            health=r["health"],
+            energy=r["energy"],
+            mood=r["mood"],
+            age_days=r["age_days"],
+        )
+        for r in reversed(rows)
+    ]
+
+
+def snapshot_current_vitals(conn: sqlite3.Connection) -> dict[str, VitalsSnapshot]:
+    """Read the current `vitals_cache` as a snapshot keyed by repo-path string.
+
+    Used by the refresh orchestrator to compare pre- vs post-scan state.
+    """
+    rows = conn.execute(
+        """
+        SELECT repo_path, hunger, health, energy, mood, stage
+        FROM vitals_cache
+        """
+    ).fetchall()
+    out: dict[str, VitalsSnapshot] = {}
+    for row in rows:
+        out[row["repo_path"]] = VitalsSnapshot(
+            repo_path=Path(row["repo_path"]),
+            stage=Stage(row["stage"]),
+            hunger=row["hunger"],
+            health=row["health"],
+            energy=row["energy"],
+            mood=row["mood"],
+        )
+    return out
+
+
+def repo_name_map(conn: sqlite3.Connection) -> dict[str, str]:
+    """Map repo-path strings to short display names — used by news diff rendering."""
+    rows = conn.execute("SELECT path, name FROM repos").fetchall()
+    return {row["path"]: row["name"] for row in rows}
