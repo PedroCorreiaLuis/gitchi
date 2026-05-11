@@ -138,6 +138,7 @@ class GitchiApp(App[None]):
 
     def action_rescan(self) -> None:
         summary = refresh_mod.refresh()
+        self.query_one(DetailPanel).clear_todo_cache()
         self._reload()
         suffix = f" · {len(summary.news_events)} news" if summary.news_events else ""
         self.notify(f"rescanned {summary.scanned} repos · {summary.ghosts} ghosts{suffix}")

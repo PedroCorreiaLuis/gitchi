@@ -165,6 +165,15 @@ def test_count_todos_skips_excluded_directories(tmp_path: Path) -> None:
     assert count_todos(tmp_path) == 1
 
 
+def test_count_todos_respects_max_lines_per_file(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    # 5000-line file with a TODO at line 4500 — should NOT be counted with cap=2000
+    lines = ["// nothing here\n"] * 4499 + ["// TODO: late\n"] + ["// nothing\n"] * 500
+    (tmp_path / "big.py").write_text("".join(lines), encoding="utf-8")
+    assert count_todos(tmp_path, max_lines_per_file=2000) == 0
+
+
 def test_play_persists_returncode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """play() should record its returncode via store.record_play_result."""
     from gitchi import store, verbs

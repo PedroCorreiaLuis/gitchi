@@ -76,11 +76,18 @@ def feed(repo_path: Path, *, max_files: int = 500) -> TodoHit | None:
     return None
 
 
-def count_todos(repo_path: Path, *, max_files: int = 500, cap: int = 500) -> int:
+def count_todos(
+    repo_path: Path,
+    *,
+    max_files: int = 500,
+    cap: int = 500,
+    max_lines_per_file: int = 2000,
+) -> int:
     """Count TODO/FIXME/XXX/HACK occurrences across the repo, up to `cap`.
 
-    Caps both the number of files scanned (`max_files`) and the total hits
-    returned (`cap`) so a vendored haystack doesn't freeze the TUI.
+    Caps the number of files scanned (`max_files`), the total hits returned
+    (`cap`), and the lines scanned per file (`max_lines_per_file`) so a single
+    large checked-in file or a vendored haystack can't freeze the TUI.
     """
     seen_files = 0
     hits = 0
@@ -96,7 +103,9 @@ def count_todos(repo_path: Path, *, max_files: int = 500, cap: int = 500) -> int
         seen_files += 1
         try:
             with p.open(encoding="utf-8", errors="ignore") as f:
-                for line in f:
+                for i, line in enumerate(f):
+                    if i >= max_lines_per_file:
+                        break
                     if _TODO_RE.search(line):
                         hits += 1
                         if hits >= cap:

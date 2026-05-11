@@ -69,6 +69,11 @@ class DetailPanel(Static):
         self._history: dict[str, list[int]] = {}
         self._todo_count: int | None = None
         self._play_result: tuple[int, int] | None = None
+        self._todo_cache: dict[str, int] = {}
+
+    def clear_todo_cache(self) -> None:
+        """Invalidate cached todo counts (called on rescan)."""
+        self._todo_cache.clear()
 
     def show_pet(self, pet: Pet | None) -> None:
         self._pet = pet
@@ -159,10 +164,15 @@ class DetailPanel(Static):
             return None
 
     def _safe_todo_count(self, pet: Pet) -> int | None:
+        key = str(pet.repo.path)
+        if key in self._todo_cache:
+            return self._todo_cache[key]
         try:
-            return count_todos(pet.repo.path)
+            count = count_todos(pet.repo.path)
         except Exception:
             return None
+        self._todo_cache[key] = count
+        return count
 
     def _badge_line(self, pet: Pet) -> str:
         parts: list[str] = []
