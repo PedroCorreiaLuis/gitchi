@@ -39,15 +39,31 @@ def _ramp_bar(value: int, width: int = _BAR_WIDTH) -> str:
 
 
 def _wrap_art(art: str, width: int = _FRAME_WIDTH) -> str:
-    """Wrap the art block in a 4-shade frame for CRT vibes."""
+    """Wrap the art block in a 4-shade frame for CRT vibes.
+
+    Strips the common leading-whitespace prefix from all non-empty lines
+    so the art's baked-in indentation doesn't compound with the frame's
+    centering. Then centers the block as a whole.
+    """
     horizontal = _FRAME_CHAR * width
-    lines = [horizontal]
     inner_width = max(0, width - 2)
-    for line in art.splitlines():
+    raw_lines = art.splitlines() or [""]
+
+    non_empty = [line for line in raw_lines if line.strip()]
+    common = min((len(line) - len(line.lstrip(" ")) for line in non_empty), default=0)
+    art_lines = [line[common:] if line.strip() else "" for line in raw_lines]
+
+    block_width = min(inner_width, max((len(line) for line in art_lines), default=0))
+    left_pad = max(0, (inner_width - block_width) // 2)
+    right_pad_total = inner_width - block_width - left_pad
+
+    lines = [horizontal]
+    for line in art_lines:
         if inner_width == 0:
             lines.append(horizontal)
             continue
-        padded = line[:inner_width].center(inner_width)
+        body = line[:block_width].ljust(block_width)
+        padded = f"{' ' * left_pad}{body}{' ' * right_pad_total}"
         lines.append(f"{_FRAME_CHAR}{padded}{_FRAME_CHAR}")
     lines.append(horizontal)
     return "\n".join(lines)
