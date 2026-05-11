@@ -329,3 +329,42 @@ _ELDER: dict[Species, str] = {
     |  '__'  |
      '------'""".rstrip(),
 }
+
+
+def _blink(art: str) -> str:
+    """Produce a single-frame variant by closing or shifting the eyes.
+
+    Returns a string the same shape as `art` with at most one line modified.
+    Idempotent on art that contains none of the recognised eye characters.
+    """
+    table = str.maketrans(
+        {
+            "o": "-",
+            "O": "ō",
+            "◐": "◑",
+            "◑": "◐",
+        }
+    )
+    out_lines: list[str] = []
+    swapped = False
+    for line in art.splitlines():
+        if not swapped and any(ch in line for ch in ("o", "O", "◐", "◑")):
+            out_lines.append(line.translate(table))
+            swapped = True
+        else:
+            out_lines.append(line)
+    return "\n".join(out_lines)
+
+
+def idle_frames(species: Species, stage: Stage) -> list[str]:
+    """Return two frames for the idle animation.
+
+    Stages that don't animate (egg, ghost) return the same frame twice. Other
+    stages return `[static, blink(static)]`. If a stage's art happens to lack
+    any blinkable eye character, both frames will be equal — callers must not
+    assume distinct frames.
+    """
+    base = render(species, stage)
+    if stage in (Stage.EGG, Stage.GHOST):
+        return [base, base]
+    return [base, _blink(base)]
