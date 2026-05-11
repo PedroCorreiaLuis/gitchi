@@ -123,3 +123,43 @@ def test_goto_argv_strips_path_to_get_binary_name() -> None:
     """An $EDITOR like `/usr/local/bin/code` should still match the 'code' goto form."""
     argv = _goto_argv("/usr/local/bin/code", Path("/r/a"), Path("/r/a/x.py"), 7)
     assert argv == ["--goto", "/r/a/x.py:7"]
+
+
+def test_count_todos_zero(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.py").write_text("print('hi')\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 0
+
+
+def test_count_todos_multiple(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.py").write_text("# TODO: x\n# FIXME y\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("# HACK: z\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 3
+
+
+def test_count_todos_skips_irrelevant_extensions(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.bin").write_text("TODO: ignored\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 0
+
+
+def test_count_todos_respects_cap(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    big = "\n".join(f"# TODO: {i}" for i in range(200))
+    (tmp_path / "a.py").write_text(big, encoding="utf-8")
+    assert count_todos(tmp_path, cap=50) == 50
+
+
+def test_count_todos_skips_excluded_directories(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    nm = tmp_path / "node_modules"
+    nm.mkdir()
+    (nm / "a.py").write_text("# TODO: in node_modules\n", encoding="utf-8")
+    (tmp_path / "real.py").write_text("# TODO: real\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 1

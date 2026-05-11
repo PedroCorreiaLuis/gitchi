@@ -28,6 +28,13 @@ _TEST_RUNNERS: list[tuple[str, list[str]]] = [
     ("Gemfile", ["bundle", "exec", "rspec"]),
     ("project.godot", ["godot", "--headless", "--script", "res://run_tests.gd"]),
 ]
+_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "vendor", "target", "build", "dist"}
+_TEXT_EXTS = {
+    ".py", ".rs", ".ts", ".tsx", ".js", ".jsx", ".go", ".swift", ".rb", ".gd",
+    ".java", ".kt", ".scala", ".cs", ".cpp", ".cc", ".c", ".h", ".hpp", ".hs",
+    ".elm", ".ex", ".exs", ".lua", ".php", ".dart", ".sh", ".md", ".toml",
+    ".yaml", ".yml",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,48 +54,13 @@ class PlayResult:
 
 def feed(repo_path: Path, *, max_files: int = 500) -> TodoHit | None:
     """Find one stale TODO/FIXME inside the repo to nudge the user toward."""
-    skip = {".git", "node_modules", ".venv", "venv", "vendor", "target", "build", "dist"}
-    text_exts = {
-        ".py",
-        ".rs",
-        ".ts",
-        ".tsx",
-        ".js",
-        ".jsx",
-        ".go",
-        ".swift",
-        ".rb",
-        ".gd",
-        ".java",
-        ".kt",
-        ".scala",
-        ".cs",
-        ".cpp",
-        ".cc",
-        ".c",
-        ".h",
-        ".hpp",
-        ".hs",
-        ".elm",
-        ".ex",
-        ".exs",
-        ".lua",
-        ".php",
-        ".dart",
-        ".sh",
-        ".md",
-        ".toml",
-        ".yaml",
-        ".yml",
-    }
-
     seen = 0
     for p in repo_path.rglob("*"):
         if seen >= max_files:
             break
-        if any(part in skip for part in p.parts):
+        if any(part in _SKIP_DIRS for part in p.parts):
             continue
-        if p.suffix.lower() not in text_exts:
+        if p.suffix.lower() not in _TEXT_EXTS:
             continue
         if not p.is_file():
             continue
@@ -102,6 +74,36 @@ def feed(repo_path: Path, *, max_files: int = 500) -> TodoHit | None:
         except OSError:
             continue
     return None
+
+
+def count_todos(repo_path: Path, *, max_files: int = 500, cap: int = 500) -> int:
+    """Count TODO/FIXME/XXX/HACK occurrences across the repo, up to `cap`.
+
+    Caps both the number of files scanned (`max_files`) and the total hits
+    returned (`cap`) so a vendored haystack doesn't freeze the TUI.
+    """
+    seen_files = 0
+    hits = 0
+    for p in repo_path.rglob("*"):
+        if seen_files >= max_files or hits >= cap:
+            break
+        if any(part in _SKIP_DIRS for part in p.parts):
+            continue
+        if p.suffix.lower() not in _TEXT_EXTS:
+            continue
+        if not p.is_file():
+            continue
+        seen_files += 1
+        try:
+            with p.open(encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    if _TODO_RE.search(line):
+                        hits += 1
+                        if hits >= cap:
+                            return hits
+        except OSError:
+            continue
+    return hits
 
 
 def play(repo_path: Path) -> PlayResult | None:
