@@ -78,6 +78,10 @@ class GitchiApp(App[None]):
         search.add_class("hidden")
 
         self._reload()
+        # Focus the pet table so global key bindings fire — otherwise the
+        # hidden SearchInput steals focus on mount (Textual auto-focuses the
+        # first focusable widget) and consumes every keystroke as input text.
+        self.query_one(PetTable).focus()
         self.set_interval(0.5, self._tick)
 
     # ---------------------------------------------------------------- data
