@@ -38,14 +38,6 @@ def _ramp_bar(value: int, width: int = _BAR_WIDTH) -> str:
     return "".join(cells)
 
 
-# Backwards-compat: tui/__init__.py imports `_bar` until Task 16 removes the
-# stale references. Keep it as an alias to _ramp_bar (8-cell default).
-def _bar(value: int, width: int = 12) -> str:
-    """Legacy 2-shade bar kept for `tui/__init__.py` compatibility."""
-    filled = max(0, min(width, round(value / 100 * width)))
-    return f"{'█' * filled}{'░' * (width - filled)}"
-
-
 def _wrap_art(art: str, width: int = _FRAME_WIDTH) -> str:
     """Wrap the art block in a 4-shade frame for CRT vibes."""
     horizontal = _FRAME_CHAR * width
@@ -69,8 +61,8 @@ class DetailPanel(Static):
         panel.tick(animation_enabled)  # advances tick + re-renders if enabled
     """
 
-    def __init__(self, *, id: str | None = None) -> None:
-        super().__init__(id=id)
+    def __init__(self) -> None:
+        super().__init__()
         self._pet: Pet | None = None
         self._tick = 0
         self._frames: list[str] = []

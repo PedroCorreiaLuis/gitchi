@@ -1,47 +1,33 @@
 """Textual dashboard.
 
-Layout:
-- Header: project title + counts
-- Main: DataTable on the left, Detail panel on the right
-- News panel below the DataTable showing the most recent state transitions
-- Footer: keybindings
+Layout: optional search bar overlay on top · two-pane body (PetTable left,
+DetailPanel right) · collapsible NewsPanel · footer. Per-session state is
+held in `AppState`; theme CSS is rendered from `themes.render_css` at
+startup and applied via the App stylesheet.
 """
 
 from __future__ import annotations
 
+import contextlib
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
-from textual.widgets import DataTable, Footer, Header
+from textual.containers import Horizontal
+from textual.widgets import Footer
 
+from .. import config as config_mod
 from .. import refresh as refresh_mod
 from .. import verbs as verbs_mod
-from ..models import Pet, Stage
-from ..rarity import emoji_for as rarity_emoji_for
-from ..species import emoji_for
-from .widgets.detail_panel import DetailPanel, _bar
+from ..models import Pet
+from .state import AppState, cycle_sort
+from .themes import get_theme, render_css
+from .widgets.detail_panel import DetailPanel
 from .widgets.news_panel import NEWS_PANEL_LIMIT, NewsPanel
+from .widgets.pet_table import PetTable
+from .widgets.search_input import SearchInput
 
 
 class GitchiApp(App[None]):
-    CSS = """
-    Screen { layout: vertical; }
-    #body { height: 1fr; }
-    DataTable { width: 50%; }
-    DetailPanel {
-        width: 50%;
-        padding: 1 2;
-        border: round $primary;
-    }
-    NewsPanel {
-        height: auto;
-        max-height: 10;
-        padding: 0 2;
-        border-top: solid $primary;
-        color: $text;
-    }
-    """
-
     BINDINGS = [
         Binding("q", "quit", "quit"),
         Binding("r", "rescan", "rescan"),
@@ -52,82 +38,107 @@ class GitchiApp(App[None]):
         Binding("v", "revive", "revive"),
         Binding("i", "ignore", "ignore"),
         Binding("u", "unignore", "unignore"),
+        Binding("slash", "open_search", "search", key_display="/"),
+        Binding("s", "sort", "sort"),
+        Binding("S", "sort_reverse", "sort↓", show=False),
+        Binding("g", "toggle_ghosts", "ghosts"),
+        Binding("B", "toggle_buried", "buried"),
+        Binding("n", "toggle_news", "news"),
+        Binding("a", "toggle_animation", "anim"),
     ]
 
     def __init__(self) -> None:
         super().__init__()
         self.pets: list[Pet] = []
+        self.visible_pets: list[Pet] = []
+        self.app_state = AppState()
+        self.cfg = config_mod.load()
+        self.app_state.animation_enabled = self.cfg.tui.animation
+        self.theme_css = render_css(get_theme(self.cfg.tui.theme))
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=False)
+        yield SearchInput()
         with Horizontal(id="body"):
-            with Vertical():
-                table: DataTable[str] = DataTable(zebra_stripes=True, cursor_type="row")
-                table.add_columns("name", "rarity", "species", "stage", "hunger", "mood", "status")
-                yield table
-            yield DetailPanel(id="detail")
-        yield NewsPanel(id="news")
+            yield PetTable()
+            yield DetailPanel()
+        yield NewsPanel()
         yield Footer()
 
     async def on_mount(self) -> None:
         self.title = "gitchi"
         self.sub_title = "your codebase as a tamagotchi"
+        # Apply theme CSS at runtime. Use `stylesheet.add_source` if available,
+        # otherwise fall through silently — default Textual styling still works.
+        with contextlib.suppress(Exception):
+            self.stylesheet.add_source(self.theme_css)
+            self.stylesheet.parse()
+
+        # Hide the search overlay until `/` is pressed.
+        search = self.query_one(SearchInput)
+        search.add_class("hidden")
+
         self._reload()
+        self.set_interval(0.5, self._tick)
+
+    # ---------------------------------------------------------------- data
 
     def _reload(self) -> None:
         self.pets = refresh_mod.list_pets()
-        table = self.query_one(DataTable)
-        table.clear()
-        for pet in self.pets:
-            stage_marker = "👻" if pet.stage is Stage.GHOST else pet.stage.value
-            table.add_row(
-                pet.repo.name,
-                f"{rarity_emoji_for(pet.rarity)} {pet.rarity.value}",
-                f"{emoji_for(pet.species)} {pet.species.value}",
-                stage_marker,
-                _bar(pet.vitals.hunger, 8),
-                _bar(pet.vitals.mood, 8),
-                pet.status_word,
-                key=str(pet.repo.path),
-            )
-        if self.pets:
+        self._render_table()
+        self.query_one(NewsPanel).show_events(
+            refresh_mod.list_recent_news(limit=NEWS_PANEL_LIMIT)
+        )
+
+    def _render_table(self) -> None:
+        table = self.query_one(PetTable)
+        self.visible_pets = table.render_pets(self.pets, self.app_state)
+        if self.visible_pets:
             self._show_index(0)
         else:
             self.query_one(DetailPanel).show_pet(None)
-        self.query_one(NewsPanel).show_events(refresh_mod.list_recent_news(limit=NEWS_PANEL_LIMIT))
 
     def _show_index(self, index: int) -> None:
-        if 0 <= index < len(self.pets):
-            self.query_one(DetailPanel).show_pet(self.pets[index])
+        if 0 <= index < len(self.visible_pets):
+            self.query_one(DetailPanel).show_pet(self.visible_pets[index])
 
-    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+    def _selected(self) -> Pet | None:
+        table = self.query_one(PetTable)
+        cursor = table.cursor_row
+        if cursor is None or not self.visible_pets:
+            return None
+        if cursor >= len(self.visible_pets):
+            return None
+        return self.visible_pets[cursor]
+
+    # ---------------------------------------------------------------- events
+
+    def on_data_table_row_highlighted(self, event: PetTable.RowHighlighted) -> None:
         if event.cursor_row is None:
             return
         self._show_index(event.cursor_row)
 
-    def _selected(self) -> Pet | None:
-        table = self.query_one(DataTable)
-        if table.cursor_row is None or not self.pets:
-            return None
-        return self.pets[table.cursor_row]
+    def on_search_input_filter_changed(self, event: SearchInput.FilterChanged) -> None:
+        self.app_state.filter_text = event.text
+        self._render_table()
+
+    def on_search_input_closed(self, _event: SearchInput.Closed) -> None:
+        search = self.query_one(SearchInput)
+        search.add_class("hidden")
+        self.query_one(PetTable).focus()
+
+    def _tick(self) -> None:
+        detail = self.query_one(DetailPanel)
+        detail.tick(self.app_state.animation_enabled)
+
+    # ---------------------------------------------------------------- actions
 
     def action_rescan(self) -> None:
         summary = refresh_mod.refresh()
         self._reload()
-        suffix = ""
-        if summary.news_events:
-            suffix = f" · {len(summary.news_events)} news"
+        suffix = f" · {len(summary.news_events)} news" if summary.news_events else ""
         self.notify(f"rescanned {summary.scanned} repos · {summary.ghosts} ghosts{suffix}")
 
     def action_feed(self) -> None:
-        """Find a stale TODO and surface it as a notification.
-
-        We deliberately do NOT auto-open `$EDITOR` from the TUI keybind — the
-        TUI already has a dedicated `e` action for that, and silently spawning
-        an editor on every `f` keypress (potentially failing with rc=127 when
-        no editor is configured) is surprising. Press `f` to surface the TODO,
-        then `e` if you want to jump to it.
-        """
         pet = self._selected()
         if pet is None:
             return
@@ -151,6 +162,8 @@ class GitchiApp(App[None]):
                 f"{pet.repo.name} sulks — tests failed (rc={result.returncode})",
                 severity="warning",
             )
+        # Refresh detail panel to update the CI badge.
+        self.query_one(DetailPanel).show_pet(pet)
 
     def action_pet(self) -> None:
         pet = self._selected()
@@ -181,7 +194,7 @@ class GitchiApp(App[None]):
             return
         verbs_mod.ignore(pet.repo.path, None)
         self._reload()
-        self.notify(f"{pet.repo.name} ignored (run `gitchi unignore` to reverse)")
+        self.notify(f"{pet.repo.name} ignored")
 
     def action_unignore(self) -> None:
         pet = self._selected()
@@ -191,6 +204,58 @@ class GitchiApp(App[None]):
         self._reload()
         self.notify(f"{pet.repo.name} is visible again")
 
+    def action_open_search(self) -> None:
+        search = self.query_one(SearchInput)
+        search.remove_class("hidden")
+        search.focus()
+
+    def action_sort(self) -> None:
+        self.app_state.sort_key = cycle_sort(self.app_state.sort_key)
+        self.app_state.sort_desc = False
+        self._render_table()
+        self.notify(f"sort: {self.app_state.sort_key}")
+
+    def action_sort_reverse(self) -> None:
+        self.app_state.sort_desc = not self.app_state.sort_desc
+        self._render_table()
+        arrow = "↓" if self.app_state.sort_desc else "↑"
+        self.notify(f"sort: {self.app_state.sort_key} {arrow}")
+
+    def action_toggle_ghosts(self) -> None:
+        self.app_state.show_ghosts = not self.app_state.show_ghosts
+        self._render_table()
+
+    def action_toggle_buried(self) -> None:
+        self.app_state.show_buried = not self.app_state.show_buried
+        self._render_table()
+
+    def action_toggle_news(self) -> None:
+        self.app_state.news_collapsed = not self.app_state.news_collapsed
+        news = self.query_one(NewsPanel)
+        if self.app_state.news_collapsed:
+            news.add_class("collapsed")
+        else:
+            news.remove_class("collapsed")
+
+    def action_toggle_animation(self) -> None:
+        self.app_state.animation_enabled = not self.app_state.animation_enabled
+        self.cfg.tui.animation = self.app_state.animation_enabled
+        with contextlib.suppress(Exception):
+            config_mod.save(self.cfg)
+        state_label = "on" if self.app_state.animation_enabled else "off"
+        self.notify(f"animation {state_label}")
+
 
 def run() -> None:
     GitchiApp().run()
+
+
+# Keep these names importable from `gitchi.tui` for back-compat with cli.py.
+__all__ = [
+    "DetailPanel",
+    "GitchiApp",
+    "NEWS_PANEL_LIMIT",
+    "NewsPanel",
+    "PetTable",
+    "run",
+]
