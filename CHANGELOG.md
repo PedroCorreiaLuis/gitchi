@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-05-11
+
+### Added
+- **Retro CRT TUI theming.** Four built-in palettes — `gameboy-green`
+  (default), `gameboy-pocket`, `virtual-boy`, `cozy` — selectable via the
+  new `gitchi theme [name]` CLI verb or the `[tui] theme` config key.
+- **Per-vital sparklines** in the detail pane. Each of hunger / health /
+  energy / mood now shows its 7-day trend alongside the current value,
+  sourced from the existing `vitals_history` table.
+- **Status reason + badges line** in the detail pane. Below the status
+  word, the panel surfaces the why ("hungry · 9d since commit",
+  "thriving · daily commits") and a badge line with `todo N · ci ✓/✗ ·
+  age Nd`. The CI badge reflects the most recent `gitchi play` result
+  (persisted via the new `last_play_results` table).
+- **2-frame idle pet animation.** Pets blink every ~0.5s. Toggle off
+  with `a` (persists to config) or `[tui] animation = false`.
+- **Search / sort / toggles in the TUI.**
+  - `/` opens a live filter (case-insensitive substring match on repo name)
+  - `s` cycles sort key (name → hunger → health → mood → age → rarity); `S` reverses
+  - `g` hides/shows ghosts; `B` hides/shows buried
+  - `n` collapses the news panel; `a` toggles animation
+- **`gitchi theme` CLI verb.** Lists available themes when invoked
+  without arguments; sets and persists when invoked with a name.
+
+### Changed
+- **`tui.py` refactored into a `tui/` package.** New `state`, `themes`,
+  `animation`, `status_reason` modules plus a `widgets/` subpackage
+  (`detail_panel`, `news_panel`, `pet_table`, `search_input`). Public
+  imports (`from gitchi.tui import run`) remain stable.
+- **`count_todos` bounded.** Caps file count (`max_files=500`), hit
+  count (`cap=500`), and per-file lines (`max_lines_per_file=2000`) so
+  large checked-in files don't stall the detail pane.
+- **DetailPanel caches TODO counts.** Row-highlight navigation no longer
+  re-scans the filesystem on every cursor move; the cache invalidates
+  on rescan.
+
+### Fixed
+- **Hidden `Input` overlay stealing focus on TUI mount.** The new
+  `SearchInput` is the first composed widget; Textual auto-focuses the
+  first focusable widget regardless of `display: none`, so every
+  keystroke was being consumed by the hidden input. Now `PetTable` is
+  explicitly focused after mount.
+
+### Internal
+- Headless Textual `Pilot` smoke tests covering mount, sort cycle,
+  ghost toggle, animation toggle, search filter, and quit.
+- `pytest-asyncio` added to the `dev` extra with `asyncio_mode = "auto"`.
+- New SQL migration `004_play_results.sql` adds `last_play_results
+  (repo_path PK, returncode, ran_at)` for persisting `gitchi play`
+  outcomes.
+
 ## [0.5.0] — 2026-05-10
 
 ### Added
