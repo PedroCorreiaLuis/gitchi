@@ -269,6 +269,36 @@ def unignore(name: str) -> None:
     console.print(f"[green]{pet.repo.name} is visible again.[/green]")
 
 
+@app.command()
+def theme(
+    name: str | None = typer.Argument(None, help="Theme name; omit to list themes."),
+) -> None:
+    """Switch the TUI theme, or list available themes."""
+    from .tui.themes import (  # noqa: PLC0415  (heavy textual-dep import, defer)
+        THEMES,
+        list_theme_names,
+    )
+
+    cfg = config_mod.load()
+    if name is None:
+        console.print(f"current: [bold]{cfg.tui.theme}[/bold]")
+        console.print("available:")
+        for n in list_theme_names():
+            marker = "*" if n == cfg.tui.theme else " "
+            console.print(f"  {marker} {n}")
+        return
+
+    if name not in THEMES:
+        console.print(
+            f"[red]unknown theme:[/red] {name}. run `gitchi theme` for the list.",
+        )
+        raise typer.Exit(code=1)
+
+    cfg.tui.theme = name
+    config_mod.save(cfg)
+    console.print(f"theme set to [bold]{name}[/bold]")
+
+
 # ---------------------------------------------------------------------------
 # config subcommands
 # ---------------------------------------------------------------------------
