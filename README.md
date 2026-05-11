@@ -11,16 +11,17 @@ It's a glanceable, slightly absurd, and surprisingly honest dashboard for the
 state of every project you've ever started.
 
 ```
-╭───────────────────────── gitchi ─────────────────────────╮
-│                                                        │
-│   ◉ rasteira       🐍 baby snake     hungry  ░░░░░░░  │
-│   ◉ gitchi           🟢 baby blob      thriving █████░  │
-│   ◉ coldpipe       🐍 adult snake    content  ████░░  │
-│   ◉ flight-project 👻 ghost          buried   ░░░░░░  │
-│   ◉ uw-copilot     🐉 teen dragon    happy    ██████  │
-│                                                        │
-│  press ↑↓ to select · enter for details · q to quit   │
-╰────────────────────────────────────────────────────────╯
+╭──── gitchi · 14 alive · 3 ghosts ────────────────────────╮
+│ NAME      RARITY     HUNGER▴   MOOD       AGE  STATUS   │
+│ rasteira  ✦ rare     ▓▓▓░░░░░  ████░░░░   12d  🐍 hungry │
+│ gitchi    · common   █████░░░  █████░░░    2d  🟢 thriv. │
+│ coldpipe  ✦ rare     ████▓▓░░  ███▓░░░░    8d  🐍 content│
+│ flight    · common   ░░░░░░░░  ░░░░░░░░   90d  👻 buried │
+│ uw-cop    ✧ uncommon ██████▓░  ██████▓░   18d  🐉 happy  │
+│                                                          │
+│ news: rasteira got hungry · gitchi leveled up            │
+╰──────────────────────────────────────────────────────────╯
+   q quit · r rescan · / search · s sort · g ghosts · a anim
 ```
 
 ## Why
@@ -86,6 +87,47 @@ export ANTHROPIC_API_KEY=sk-ant-...   # enriches Mood from commit-message tone
 gitchi cron install             # writes a launchd plist that refreshes nightly
 gitchi cron uninstall           # remove the launchd job
 gitchi menubar run              # run the rumps menu-bar app in the foreground
+```
+
+## Keybindings
+
+Inside the TUI dashboard:
+
+| Key   | Action                                  |
+|-------|-----------------------------------------|
+| `q`   | quit                                    |
+| `r`   | rescan / refresh                        |
+| `/`   | search by name                          |
+| `s`   | cycle sort column (`S` reverses)        |
+| `g`   | toggle ghosts                           |
+| `B`   | toggle buried                           |
+| `n`   | toggle the news panel                   |
+| `a`   | toggle the idle pet animation           |
+| `f`   | feed the selected pet                   |
+| `p`   | play with the selected pet              |
+| `e`   | open the selected repo in `$EDITOR`     |
+| `b`   | bury the selected pet                   |
+| `v`   | revive a ghost                          |
+| `i`   | ignore the selected repo                |
+| `u`   | unignore a previously hidden repo       |
+
+## Theming
+
+Pick a retro CRT palette:
+
+```bash
+gitchi theme               # list available themes
+gitchi theme virtual-boy   # switch
+```
+
+Built-in themes: `gameboy-green` (default), `gameboy-pocket`, `virtual-boy`, `cozy`.
+
+The animation can be toggled in-app with `a`, or set in your config:
+
+```toml
+[tui]
+theme = "gameboy-green"
+animation = true
 ```
 
 ## Stats
