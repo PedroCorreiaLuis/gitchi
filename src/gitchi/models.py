@@ -212,8 +212,15 @@ class GitHubConfig:
 
 
 @dataclass(slots=True)
+class TuiConfig:
+    theme: str = "gameboy-green"
+    animation: bool = True
+
+
+@dataclass(slots=True)
 class Config:
     scan: ScanConfig = field(default_factory=ScanConfig)
     stats: StatsConfig = field(default_factory=StatsConfig)
     claude: ClaudeConfig = field(default_factory=ClaudeConfig)
     github: GitHubConfig = field(default_factory=GitHubConfig)
+    tui: TuiConfig = field(default_factory=TuiConfig)

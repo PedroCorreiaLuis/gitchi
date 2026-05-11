@@ -123,3 +123,108 @@ def test_goto_argv_strips_path_to_get_binary_name() -> None:
     """An $EDITOR like `/usr/local/bin/code` should still match the 'code' goto form."""
     argv = _goto_argv("/usr/local/bin/code", Path("/r/a"), Path("/r/a/x.py"), 7)
     assert argv == ["--goto", "/r/a/x.py:7"]
+
+
+def test_count_todos_zero(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.py").write_text("print('hi')\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 0
+
+
+def test_count_todos_multiple(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.py").write_text("# TODO: x\n# FIXME y\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("# HACK: z\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 3
+
+
+def test_count_todos_skips_irrelevant_extensions(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    (tmp_path / "a.bin").write_text("TODO: ignored\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 0
+
+
+def test_count_todos_respects_cap(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    big = "\n".join(f"# TODO: {i}" for i in range(200))
+    (tmp_path / "a.py").write_text(big, encoding="utf-8")
+    assert count_todos(tmp_path, cap=50) == 50
+
+
+def test_count_todos_skips_excluded_directories(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    nm = tmp_path / "node_modules"
+    nm.mkdir()
+    (nm / "a.py").write_text("# TODO: in node_modules\n", encoding="utf-8")
+    (tmp_path / "real.py").write_text("# TODO: real\n", encoding="utf-8")
+    assert count_todos(tmp_path) == 1
+
+
+def test_count_todos_respects_max_lines_per_file(tmp_path: Path) -> None:
+    from gitchi.verbs import count_todos
+
+    # 5000-line file with a TODO at line 4500 — should NOT be counted with cap=2000
+    lines = ["// nothing here\n"] * 4499 + ["// TODO: late\n"] + ["// nothing\n"] * 500
+    (tmp_path / "big.py").write_text("".join(lines), encoding="utf-8")
+    assert count_todos(tmp_path, max_lines_per_file=2000) == 0
+
+
+def test_play_persists_returncode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """play() should record its returncode via store.record_play_result."""
+    from gitchi import store, verbs
+
+    calls: list[tuple[Path, int]] = []
+
+    def fake_record(_conn, repo_path, *, returncode):  # type: ignore[no-untyped-def]
+        calls.append((repo_path, returncode))
+
+    monkeypatch.setattr(store, "record_play_result", fake_record)
+    monkeypatch.setattr("gitchi.verbs.db_path", lambda: tmp_path / "gitchi.db")
+
+    # Set up a tiny pyproject.toml so detect_runner returns ["pytest"]
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr(verbs.subprocess, "run", lambda *a, **kw: _Proc())
+
+    result = verbs.play(repo)
+    assert result is not None
+    assert result.returncode == 0
+    assert calls == [(repo, 0)]
+
+
+def test_play_returns_even_if_persist_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Persistence failures must not break play()."""
+    from gitchi import store, verbs
+
+    def boom(*_a, **_kw):  # type: ignore[no-untyped-def]
+        raise RuntimeError("simulated store failure")
+
+    monkeypatch.setattr(store, "record_play_result", boom)
+    monkeypatch.setattr("gitchi.verbs.db_path", lambda: tmp_path / "gitchi.db")
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr(verbs.subprocess, "run", lambda *a, **kw: _Proc())
+
+    result = verbs.play(repo)
+    assert result is not None
+    assert result.returncode == 0

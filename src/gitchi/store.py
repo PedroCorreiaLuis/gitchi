@@ -521,3 +521,33 @@ def repo_name_map(conn: sqlite3.Connection) -> dict[str, str]:
     """Map repo-path strings to short display names — used by news diff rendering."""
     rows = conn.execute("SELECT path, name FROM repos").fetchall()
     return {row["path"]: row["name"] for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# play results
+# ---------------------------------------------------------------------------
+
+
+def record_play_result(conn: sqlite3.Connection, repo_path: Path, *, returncode: int) -> None:
+    """Persist the most recent test-run result for a repo."""
+    conn.execute(
+        """
+        INSERT INTO last_play_results (repo_path, returncode, ran_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(repo_path) DO UPDATE SET
+            returncode = excluded.returncode,
+            ran_at = excluded.ran_at
+        """,
+        (str(repo_path), returncode, _now_epoch()),
+    )
+
+
+def last_play_result(conn: sqlite3.Connection, repo_path: Path) -> tuple[int, int] | None:
+    """Return (returncode, ran_at_epoch_seconds) or None if no result recorded."""
+    row = conn.execute(
+        "SELECT returncode, ran_at FROM last_play_results WHERE repo_path = ?",
+        (str(repo_path),),
+    ).fetchone()
+    if row is None:
+        return None
+    return int(row["returncode"]), int(row["ran_at"])
