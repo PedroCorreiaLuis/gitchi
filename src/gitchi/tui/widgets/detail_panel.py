@@ -47,7 +47,7 @@ def _wrap_art(art: str, width: int = _FRAME_WIDTH) -> str:
         if inner_width == 0:
             lines.append(horizontal)
             continue
-        padded = line[:inner_width].ljust(inner_width)
+        padded = line[:inner_width].center(inner_width)
         lines.append(f"{_FRAME_CHAR}{padded}{_FRAME_CHAR}")
     lines.append(horizontal)
     return "\n".join(lines)

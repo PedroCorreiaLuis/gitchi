@@ -1,6 +1,6 @@
 [project]
 name = "gitchi"
-version = "0.6.0"
+version = "0.6.1"
 description = "A virtual pet for every git repo. Your codebase as a tamagotchi."
 readme = "README.md"
 license = { file = "LICENSE" }
