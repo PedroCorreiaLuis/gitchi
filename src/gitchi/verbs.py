@@ -107,7 +107,12 @@ def count_todos(repo_path: Path, *, max_files: int = 500, cap: int = 500) -> int
 
 
 def play(repo_path: Path) -> PlayResult | None:
-    """Detect the test runner and run it. Returns None if no runner is detected."""
+    """Detect the test runner and run it. Returns None if no runner is detected.
+
+    On success or failure, the returncode is persisted via `store.record_play_result`
+    so the detail-pane CI badge can reflect the most recent test outcome. Persistence
+    failures are swallowed — they must never break the play action.
+    """
     runner = detect_runner(repo_path)
     if runner is None:
         return None
@@ -120,14 +125,28 @@ def play(repo_path: Path) -> PlayResult | None:
             timeout=120,
             check=False,
         )
+        result = PlayResult(
+            runner=runner,
+            returncode=proc.returncode,
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+        )
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        return PlayResult(runner=runner, returncode=-1, stdout="", stderr=str(e))
-    return PlayResult(
-        runner=runner,
-        returncode=proc.returncode,
-        stdout=proc.stdout,
-        stderr=proc.stderr,
-    )
+        result = PlayResult(runner=runner, returncode=-1, stdout="", stderr=str(e))
+
+    _persist_play_result(repo_path, result.returncode)
+    return result
+
+
+def _persist_play_result(repo_path: Path, returncode: int) -> None:
+    """Record the play result. Errors are silently swallowed."""
+    from . import store  # noqa: PLC0415 — local import to avoid circular reference
+
+    try:
+        with store.connect(db_path()) as conn:
+            store.record_play_result(conn, repo_path, returncode=returncode)
+    except Exception:
+        pass
 
 
 def detect_runner(repo_path: Path) -> list[str] | None:
